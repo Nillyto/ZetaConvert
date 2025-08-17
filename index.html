@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>ZetaConvert — JPG → PNG</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{font-family:system-ui,Arial,sans-serif;margin:0;display:grid;place-items:center;min-height:100dvh;background:#0f1226;color:#e9ecff}
+    .card{width:min(560px,92%);background:#15193a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px}
+    h1{margin:0 0 12px}
+    p{margin:0 0 16px;color:#aab3d5}
+    input[type=file]{width:100%;padding:12px;border:1px solid #31385e;border-radius:10px;background:#0f1226;color:#e9ecff}
+    button{margin-top:12px;width:100%;padding:12px 16px;border:0;border-radius:10px;background:#7c9cff;color:#0c1030;font-weight:700;cursor:pointer}
+    .hint{font-size:.9rem;color:#aab3d5;margin-top:8px}
+    .row{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:10px}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>JPG → PNG</h1>
+    <p>Subí un JPG/JPEG y te devolvemos un PNG descargable.</p>
+
+    <form id="form" method="POST" enctype="multipart/form-data">
+      <input id="file" name="file" type="file" accept=".jpg,.jpeg,image/jpeg" required />
+      <button type="submit">Convertir y descargar</button>
+      <div class="row">
+        <small class="hint">Máx 10MB</small>
+        <small class="hint mono" id="status">Listo</small>
+      </div>
+    </form>
+
+    <p class="hint" style="margin-top:14px">Privado: el archivo se envía al servidor solo para convertir y se devuelve al instante.</p>
+  </div>
+
+  <script>
+    // ⚙️ Reemplazá esto por tu backend (Render/Railway/VPS)
+    const BACKEND_URL = "https://zetaconvert-backend.onrender.com"; // ← CAMBIAR
+
+    const form = document.getElementById('form');
+    const statusEl = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      statusEl.textContent = 'Convirtiendo...';
+      try {
+        const fd = new FormData();
+        fd.append('file', file);
+
+        // Enviamos al backend y recibimos el PNG como blob
+        const res = await fetch(`${BACKEND_URL}/convert`, {
+          method: 'POST',
+          body: fd,
+        });
+
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || 'Error en la conversión');
+        }
+
+        const blob = await res.blob();
+        // nombre de descarga
+        const base = (file.name.split('.').slice(0, -1).join('.') || 'convertido') + '.png';
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = base;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        statusEl.textContent = 'Listo ✔️';
+      } catch (err) {
+        statusEl.textContent = 'Error';
+        alert('No se pudo convertir: ' + (err.message || err));
+      }
+    });
+  </script>
+</body>
+</html>
