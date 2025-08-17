@@ -8,7 +8,7 @@
     :root { --bg:#0f1226; --card:#15193a; --txt:#e9ecff; --muted:#aab3d5; --line:#31385e; --brand:#7c9cff; }
     *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,Arial,sans-serif;min-height:100dvh;display:grid;place-items:center;padding:16px}
-    .card{width:min(720px,96%);background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card{width:min(780px,96%);background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
     h1{margin:0 0 8px} p{margin:0 0 14px;color:var(--muted)}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     label{font-size:.95rem;color:#c9d2f0}
@@ -21,13 +21,14 @@
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
     .hint{color:var(--muted);font-size:.9rem}
     .inline{display:flex;align-items:center;gap:8px}
-    @media (max-width:720px){ .row{grid-template-columns:1fr} }
+    canvas{width:100%;max-height:360px;background:#0b0e22;border:1px solid var(--line);border-radius:10px}
+    @media (max-width:780px){ .row{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Convertí tu imagen</h1>
-    <p>Subí un archivo y elegí el formato destino. Opcional: <em>eliminar fondo</em> (solo PNG) con tolerancia.</p>
+    <p>Subí un archivo y elegí el formato destino. Opción: <em>eliminar fondo</em> (solo PNG), con tolerancia y color manual si querés.</p>
 
     <div class="row">
       <div>
@@ -53,6 +54,25 @@
         <input id="tolerance" type="range" min="0" max="100" value="30" disabled />
         <div class="hint mono">Valor: <span id="tolVal">30</span></div>
       </div>
+    </div>
+
+    <div class="row" style="margin-top:10px">
+      <div>
+        <label for="mode">Modo</label>
+        <select id="mode" disabled>
+          <option value="auto">Auto (color del borde)</option>
+          <option value="color">Color manual</option>
+        </select>
+      </div>
+      <div class="inline">
+        <input id="color" type="color" value="#ffffff" disabled />
+        <span class="hint">Elegí color o clic en la imagen</span>
+      </div>
+    </div>
+
+    <div style="margin-top:10px">
+      <canvas id="preview"></canvas>
+      <div class="hint">Tip: con “Color manual”, hacé clic en el fondo de la imagen para tomar su color.</div>
     </div>
 
     <div class="row" style="margin-top:14px">
@@ -94,9 +114,14 @@
     const bar = $("#bar");
     const statusEl = $("#status");
     const fileInfo = $("#fileInfo");
+    const modeSel = $("#mode");
+    const colorInp = $("#color");
+    const canvas = $("#preview");
+    const ctx = canvas.getContext("2d");
 
     let lastBlobUrl = null;
     let outName = "convertido.png";
+    let imgObj = null;
 
     function extOf(name){
       const n = (name||"").toLowerCase();
@@ -107,6 +132,30 @@
       bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
       if (text) statusEl.textContent = text;
     }
+    function drawPreview(file){
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const maxW = canvas.clientWidth || 720;
+        const scale = Math.min(maxW / img.width, 1);
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        imgObj = img;
+        URL.revokeObjectURL(url);
+      };
+      img.src = url;
+    }
+    canvas.addEventListener("click", (e) => {
+      if (!imgObj) return;
+      if (modeSel.value !== "color") return;
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) * (canvas.width / rect.width));
+      const y = Math.floor((e.clientY - rect.top) * (canvas.height / rect.height));
+      const data = ctx.getImageData(x, y, 1, 1).data;
+      const hex = "#" + [data[0], data[1], data[2]].map(v => v.toString(16).padStart(2,"0")).join("");
+      colorInp.value = hex;
+    });
 
     tolerance.addEventListener("input", ()=> { tolVal.textContent = tolerance.value; });
 
@@ -122,9 +171,13 @@
         convertBtn.disabled = true;
         removeBg.disabled = true; removeBg.checked = false;
         tolerance.disabled = true; tolVal.textContent = "30";
+        modeSel.disabled = true; colorInp.disabled = true;
         setProgress(0, "Esperando archivo…");
+        ctx.clearRect(0,0,canvas.width,canvas.height); imgObj = null;
         return;
       }
+
+      drawPreview(f);
 
       const ext = extOf(f.name);
       fileInfo.textContent = `${f.name} · ${(f.size/1024/1024).toFixed(2)} MB · ${f.type || "sin mimetype"}`;
@@ -132,12 +185,12 @@
       const opts = SUGGESTIONS[ext] || ALL;
       targetSel.innerHTML = `<option value="">Elegí un formato…</option>` +
         opts.map(o => `<option value="${o}">${o.toUpperCase()}</option>`).join("");
-      targetSel.disabled = true; // hasta que elija opción
       targetSel.disabled = false;
 
       convertBtn.disabled = true;
       removeBg.disabled = true; removeBg.checked = false;
       tolerance.disabled = true; tolVal.textContent = tolerance.value;
+      modeSel.disabled = true; colorInp.disabled = true;
       setProgress(0, "Formato destino pendiente…");
     });
 
@@ -148,10 +201,22 @@
 
       removeBg.disabled = !png;
       tolerance.disabled = !png;
+      modeSel.disabled = !png;
+      colorInp.disabled = !png || modeSel.value !== "color";
       if (!png) { removeBg.checked = false; }
 
       convertBtn.disabled = !(f && targetSel.value);
       if (!convertBtn.disabled) setProgress(0, "Listo para convertir");
+    });
+
+    modeSel.addEventListener("change", () => {
+      colorInp.disabled = (modeSel.value !== "color") || removeBg.disabled || !removeBg.checked;
+    });
+    removeBg.addEventListener("change", () => {
+      const enabled = removeBg.checked && (targetSel.value === "png");
+      tolerance.disabled = !enabled;
+      modeSel.disabled = !enabled;
+      colorInp.disabled = !enabled || modeSel.value !== "color";
     });
 
     convertBtn.addEventListener("click", (e) => {
@@ -170,19 +235,19 @@
       xhr.open("POST", `${BACKEND_URL}/convert`);
       xhr.responseType = "blob";
 
-      // Progreso de subida
+      // Progreso de subida (0–60%)
       xhr.upload.onprogress = (ev) => {
         if (ev.lengthComputable) {
-          const pct = Math.round((ev.loaded/ev.total) * 60); // 0-60%
+          const pct = Math.round((ev.loaded/ev.total) * 60);
           setProgress(pct, `Subiendo… ${pct}%`);
         } else {
           setProgress(20, "Subiendo…");
         }
       };
-      // Progreso de descarga
+      // Progreso de descarga (60–100%)
       xhr.onprogress = (ev) => {
         if (ev.lengthComputable) {
-          const pct = 60 + Math.round((ev.loaded/ev.total) * 40); // 60-100%
+          const pct = 60 + Math.round((ev.loaded/ev.total) * 40);
           setProgress(pct, `Descargando… ${pct}%`);
         } else {
           setProgress(90, "Descargando…");
@@ -213,6 +278,10 @@
       if (target === "png" && removeBg.checked) {
         fd.append("remove_bg", "1");
         fd.append("tolerance", String(tolerance.value));
+        fd.append("remove_bg_mode", modeSel.value);      // "auto" | "color"
+        if (modeSel.value === "color") {
+          fd.append("ref_color", colorInp.value);        // "#RRGGBB"
+        }
       }
 
       setProgress(5, "Preparando…");
