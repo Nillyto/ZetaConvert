@@ -5,25 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ZetaConvert — Convertí imágenes</title>
   <style>
-    body{font-family:system-ui,Arial,sans-serif;margin:0;background:#0f1226;color:#e9ecff;min-height:100dvh;display:grid;place-items:center}
-    .card{width:min(680px,92%);background:#15193a;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
-    h1{margin:0 0 8px} p{margin:0 0 14px;color:#aab3d5}
+    :root { --bg:#0f1226; --card:#15193a; --txt:#e9ecff; --muted:#aab3d5; --line:#31385e; --brand:#7c9cff; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,Arial,sans-serif;min-height:100dvh;display:grid;place-items:center;padding:16px}
+    .card{width:min(720px,96%);background:var(--card);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    h1{margin:0 0 8px} p{margin:0 0 14px;color:var(--muted)}
     .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     label{font-size:.95rem;color:#c9d2f0}
-    input[type=file], select, button{width:100%;padding:12px;border-radius:10px;border:1px solid #31385e;background:#0f1226;color:#e9ecff}
-    button{background:#7c9cff;color:#0c1030;font-weight:700;border:0;cursor:pointer}
+    input[type=file], select, button, input[type=range]{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:#0b1030;color:var(--txt)}
+    input[type=range]{padding:6px}
+    button{background:var(--brand);color:#0c1030;font-weight:700;border:0;cursor:pointer}
     button[disabled]{opacity:.5;cursor:not-allowed}
-    .progress{height:12px;background:#0b0e22;border-radius:999px;overflow:hidden;border:1px solid #31385e}
-    .bar{height:100%;width:0%;background:#7c9cff;transition:width .15s linear}
+    .progress{height:12px;background:#0b0e22;border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+    .bar{height:100%;width:0%;background:var(--brand);transition:width .15s linear}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;}
-    .hint{color:#aab3d5;font-size:.9rem}
-    @media (max-width:700px){ .row{grid-template-columns:1fr} }
+    .hint{color:var(--muted);font-size:.9rem}
+    .inline{display:flex;align-items:center;gap:8px}
+    @media (max-width:720px){ .row{grid-template-columns:1fr} }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Convertí tu imagen</h1>
-    <p>Subí un archivo y elegí a qué formato convertir. Soporta JPG, PNG, WEBP, BMP, TIFF, GIF.</p>
+    <p>Subí un archivo y elegí el formato destino. Opcional: <em>eliminar fondo</em> (solo PNG) con tolerancia.</p>
 
     <div class="row">
       <div>
@@ -39,7 +43,19 @@
       </div>
     </div>
 
-    <div style="margin-top:14px" class="row">
+    <div class="row" style="margin-top:10px">
+      <div class="inline">
+        <input id="removeBg" type="checkbox" disabled />
+        <label for="removeBg" class="inline" style="padding:0">Eliminar fondo (solo PNG)</label>
+      </div>
+      <div>
+        <label for="tolerance">Tolerancia</label>
+        <input id="tolerance" type="range" min="0" max="100" value="30" disabled />
+        <div class="hint mono">Valor: <span id="tolVal">30</span></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px">
       <button id="convertBtn" disabled>Convertir</button>
       <button id="downloadBtn" disabled>Descargar</button>
     </div>
@@ -50,68 +66,168 @@
     </div>
   </div>
 
-  <!-- dentro del form/inputs existentes, sumá este bloque -->
-<div class="row" style="margin-top:8px">
-  <div>
-    <label style="display:flex;gap:8px;align-items:center">
-      <input id="removeBg" type="checkbox" disabled />
-      <span>Eliminar fondo (solo PNG)</span>
-    </label>
-  </div>
-  <div>
-    <label for="tolerance">Tolerancia</label>
-    <input id="tolerance" type="range" min="0" max="100" value="30" disabled />
-    <div class="hint mono" id="tolVal">30</div>
-  </div>
-</div>
+  <script>
+    // ⚙️ Tu backend en Render
+    const BACKEND_URL = "https://zetaconvert-backend.onrender.com";
 
+    // Sugerencias por extensión (si no sabemos, mostramos todos)
+    const SUGGESTIONS = {
+      ".jpg":  ["png","webp","bmp","tiff"],
+      ".jpeg": ["png","webp","bmp","tiff"],
+      ".png":  ["jpg","webp","bmp","tiff"],
+      ".webp": ["jpg","png","bmp","tiff"],
+      ".bmp":  ["jpg","png","webp","tiff"],
+      ".tif":  ["jpg","png","webp","bmp"],
+      ".tiff": ["jpg","png","webp","bmp"],
+      ".gif":  ["png","webp","jpg"]
+    };
+    const ALL = ["png","jpg","webp","bmp","tiff"];
 
-<script>
-  const BACKEND_URL = "https://zetaconvert-backend.onrender.com";
+    const $ = (q)=>document.querySelector(q);
+    const fileInput = $("#file");
+    const targetSel = $("#target");
+    const convertBtn = $("#convertBtn");
+    const downloadBtn = $("#downloadBtn");
+    const removeBg = $("#removeBg");
+    const tolerance = $("#tolerance");
+    const tolVal = $("#tolVal");
+    const bar = $("#bar");
+    const statusEl = $("#status");
+    const fileInfo = $("#fileInfo");
 
-  // ... (tu código existente) ...
+    let lastBlobUrl = null;
+    let outName = "convertido.png";
 
-  const removeBg = document.getElementById('removeBg');
-  const tolerance = document.getElementById('tolerance');
-  const tolVal = document.getElementById('tolVal');
-
-  tolerance.addEventListener('input', () => { tolVal.textContent = tolerance.value; });
-
-  // cuando cambia el target, habilitamos/inhabilitamos la opción de fondo
-  targetSel.addEventListener("change", () => {
-    const f = fileInput.files[0];
-    const target = targetSel.value;
-    const png = target === "png";
-
-    removeBg.disabled = !png;
-    tolerance.disabled = !png;
-    if (!png) { removeBg.checked = false; }
-
-    convertBtn.disabled = !(f && targetSel.value);
-    if (!convertBtn.disabled) setProgress(0, "Listo para convertir");
-  });
-
-  convertBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    const f = fileInput.files[0];
-    const target = targetSel.value;
-    if (!f || !target) return;
-
-    // ... (tu XHR y progreso existente) ...
-
-    const fd = new FormData();
-    fd.append("file", f);
-    fd.append("target", target);
-    // 🔸 pasar flags si corresponde
-    if (target === "png" && removeBg.checked) {
-      fd.append("remove_bg", "1");
-      fd.append("tolerance", String(tolerance.value));
+    function extOf(name){
+      const n = (name||"").toLowerCase();
+      const i = n.lastIndexOf(".");
+      return i>=0 ? n.slice(i) : "";
+    }
+    function setProgress(pct, text){
+      bar.style.width = Math.max(0, Math.min(100, pct)) + "%";
+      if (text) statusEl.textContent = text;
     }
 
-    setProgress(5, "Preparando…");
-    xhr.send(fd);
-  });
-</script>
+    tolerance.addEventListener("input", ()=> { tolVal.textContent = tolerance.value; });
 
+    fileInput.addEventListener("change", () => {
+      downloadBtn.disabled = true;
+      if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+
+      const f = fileInput.files[0];
+      if (!f) {
+        fileInfo.textContent = "No hay archivo";
+        targetSel.disabled = true;
+        targetSel.innerHTML = `<option value="">Elegí un formato…</option>`;
+        convertBtn.disabled = true;
+        removeBg.disabled = true; removeBg.checked = false;
+        tolerance.disabled = true; tolVal.textContent = "30";
+        setProgress(0, "Esperando archivo…");
+        return;
+      }
+
+      const ext = extOf(f.name);
+      fileInfo.textContent = `${f.name} · ${(f.size/1024/1024).toFixed(2)} MB · ${f.type || "sin mimetype"}`;
+
+      const opts = SUGGESTIONS[ext] || ALL;
+      targetSel.innerHTML = `<option value="">Elegí un formato…</option>` +
+        opts.map(o => `<option value="${o}">${o.toUpperCase()}</option>`).join("");
+      targetSel.disabled = true; // hasta que elija opción
+      targetSel.disabled = false;
+
+      convertBtn.disabled = true;
+      removeBg.disabled = true; removeBg.checked = false;
+      tolerance.disabled = true; tolVal.textContent = tolerance.value;
+      setProgress(0, "Formato destino pendiente…");
+    });
+
+    targetSel.addEventListener("change", () => {
+      const f = fileInput.files[0];
+      const target = targetSel.value;
+      const png = target === "png";
+
+      removeBg.disabled = !png;
+      tolerance.disabled = !png;
+      if (!png) { removeBg.checked = false; }
+
+      convertBtn.disabled = !(f && targetSel.value);
+      if (!convertBtn.disabled) setProgress(0, "Listo para convertir");
+    });
+
+    convertBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const f = fileInput.files[0];
+      const target = targetSel.value;
+      if (!f || !target) return;
+
+      downloadBtn.disabled = true;
+      if (lastBlobUrl) { URL.revokeObjectURL(lastBlobUrl); lastBlobUrl = null; }
+
+      const base = f.name.includes(".") ? f.name.slice(0, f.name.lastIndexOf(".")) : "convertido";
+      outName = `${base}.${target}`;
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${BACKEND_URL}/convert`);
+      xhr.responseType = "blob";
+
+      // Progreso de subida
+      xhr.upload.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          const pct = Math.round((ev.loaded/ev.total) * 60); // 0-60%
+          setProgress(pct, `Subiendo… ${pct}%`);
+        } else {
+          setProgress(20, "Subiendo…");
+        }
+      };
+      // Progreso de descarga
+      xhr.onprogress = (ev) => {
+        if (ev.lengthComputable) {
+          const pct = 60 + Math.round((ev.loaded/ev.total) * 40); // 60-100%
+          setProgress(pct, `Descargando… ${pct}%`);
+        } else {
+          setProgress(90, "Descargando…");
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          setProgress(100, "Listo ✔️");
+          lastBlobUrl = URL.createObjectURL(xhr.response);
+          downloadBtn.disabled = false;
+        } else {
+          const reader = new FileReader();
+          reader.onload = ()=> alert(`Error ${xhr.status}: ${reader.result}`);
+          reader.readAsText(xhr.response);
+          setProgress(0, "Error");
+          downloadBtn.disabled = true;
+        }
+      };
+      xhr.onerror = () => {
+        setProgress(0, "Error de red");
+        alert("No se pudo conectar al servidor. Probá de nuevo.");
+      };
+
+      const fd = new FormData();
+      fd.append("file", f);
+      fd.append("target", target);
+      if (target === "png" && removeBg.checked) {
+        fd.append("remove_bg", "1");
+        fd.append("tolerance", String(tolerance.value));
+      }
+
+      setProgress(5, "Preparando…");
+      xhr.send(fd);
+    });
+
+    downloadBtn.addEventListener("click", () => {
+      if (!lastBlobUrl) return;
+      const a = document.createElement("a");
+      a.href = lastBlobUrl;
+      a.download = outName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    });
+  </script>
 </body>
 </html>
