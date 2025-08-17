@@ -1,4 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 24 24" aria-hidden="true">
-  <rect x="2" y="2" width="20" height="20" rx="5" fill="white" stroke="black" />
-  <path d="M7 7h10l-10 10h10" stroke="#e1192a" stroke-width="2" fill="none"/>
-</svg>
+[build]
+  publish = "."
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://zetaconvert-backend.onrender.com; font-src 'self' data:; base-uri 'self'; form-action 'self' https://zetaconvert-backend.onrender.com; frame-ancestors 'none';"
