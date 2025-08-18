@@ -15,6 +15,7 @@
     <link rel="preload" href="assets/css/styles.css" as="style">
     <link rel="stylesheet" href="assets/css/styles.css">
     <noscript><meta http-equiv="refresh" content="0;url=no-js.html"></noscript>
+    <link rel="manifest" href="manifest.webmanifest">
   </head>
 
   <body data-theme="auto">
@@ -170,7 +171,7 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-      const BACKEND_URL = "https://zetaconvert-backend.onrender.com";
+      const BACKEND_URL = "/api";
       const $ = (s) => document.querySelector(s);
       const $$ = (s) => document.querySelectorAll(s);
       const preferDark = () => window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;

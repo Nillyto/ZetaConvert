@@ -1,4 +1,27 @@
+[build]
+  publish = "."
+  command = ""
+
+# SPA fallback (todas las rutas al index)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Proxy al backend de Render (evita CORS)
+[[redirects]]
+  from = "/api/*"
+  to = "https://zetaconvert-backend.onrender.com/:splat"
+  status = 200
+  force = true
+
+# Headers de seguridad + CSP
+[[headers]]
+  for = "/*"
+  [headers.values]
+  Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+  X-Content-Type-Options = "nosniff"
+  Referrer-Policy = "strict-origin-when-cross-origin"
+  Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+  # Si mantenés JS inline, dejá 'unsafe-inline'. Si lo movés a archivo, sacalo.
+  Content-Security-Policy = "default-src 'self'; img-src 'self' blob: data:; connect-src 'self' https://zetaconvert-backend.onrender.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; base-uri 'self'; form-action 'self'"
