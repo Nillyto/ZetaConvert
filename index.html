@@ -187,6 +187,7 @@
 
   <!-- ============ SCRIPT (router, i18n, theme, conversion) ============ -->
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
     // ===== Backend URL (ajustá si cambia) =====
     const BACKEND_URL = "https://zetaconvert-backend.onrender.com";
 
@@ -621,6 +622,7 @@
         if (a.getAttribute("href")===location.pathname) a.setAttribute("aria-current","page");
       });
     })();
+  }); 
   </script>
 </body>
 </html>
