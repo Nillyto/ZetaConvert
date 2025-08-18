@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Convertir JPG a PNG — ZetaConvert</title>
+    <meta name="description" content="Convierte imágenes JPG a PNG con fondo transparente opcional. Gratis, rápido y en línea con ZetaConvert." />
+    <link rel="canonical" href="https://zetaconvert.online/converters/jpg-to-png.html" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Convertir JPG a PNG — ZetaConvert" />
+    <meta property="og:description" content="Convierte imágenes JPG a PNG con fondo transparente opcional. Gratis, rápido y en línea." />
+    <meta property="og:url" content="https://zetaconvert.online/converters/jpg-to-png.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://zetaconvert.online/assets/icons/icon-512.png" />
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+
+  <body data-theme="auto">
+    <header class="header">
+      <nav class="nav" aria-label="Principal">
+        <a href="../" class="brand">
+          <img src="../assets/img/logo.svg" alt="ZetaConvert logo" width="28" height="28">
+          <span>ZetaConvert</span>
+        </a>
+        <ul class="nav-links">
+          <li><a href="../">Inicio</a></li>
+          <li><a href="jpg-to-png.html" aria-current="page">JPG→PNG</a></li>
+          <li><a href="png-to-jpg.html">PNG→JPG</a></li>
+          <li><a href="../text/">Texto</a></li>
+          <li><a href="../three/">3D</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero">
+        <h1>Convertir JPG a PNG</h1>
+        <p class="muted">Convierte tus imágenes JPG a PNG con opción de fondo transparente. Rápido, gratis y seguro.</p>
+      </section>
+
+      <section class="converter panel">
+        <form id="converter-form" aria-label="Conversor JPG a PNG">
+          <label for="file-upload" class="file-label">Selecciona un archivo JPG:</label>
+          <input type="file" id="file-upload" name="file" accept="image/jpeg" required />
+
+          <div class="options">
+            <label>
+              <input type="checkbox" id="transparent-bg" />
+              Fondo transparente
+            </label>
+          </div>
+
+          <button type="submit" class="btn primary">Convertir</button>
+        </form>
+
+        <div id="progress-container" hidden>
+          <p>Convirtiendo...</p>
+          <progress id="progress-bar" value="0" max="100"></progress>
+        </div>
+
+        <div id="result" hidden>
+          <h2>Resultado</h2>
+          <a id="download-link" href="#" download="converted.png" class="btn success">Descargar PNG</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="foot">
+        © <span id="year"></span> ZetaConvert —
+        <a href="../legal/terms.html">Términos</a> ·
+        <a href="../legal/privacy.html">Privacidad</a>
+      </div>
+    </footer>
+
+    <script src="../assets/js/theme.js" defer></script>
+    <script src="../assets/js/ui.js" defer></script>
+    <script>
+      // Conversor simple en JS
+      const form = document.getElementById('converter-form');
+      const progressContainer = document.getElementById('progress-container');
+      const progressBar = document.getElementById('progress-bar');
+      const result = document.getElementById('result');
+      const downloadLink = document.getElementById('download-link');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const fileInput = document.getElementById('file-upload');
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        progressContainer.hidden = false;
+        progressBar.value = 30;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const img = new Image();
+          img.src = reader.result;
+          img.onload = () => {
+            progressBar.value = 70;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(img, 0, 0);
+
+            progressBar.value = 100;
+            result.hidden = false;
+            downloadLink.href = canvas.toDataURL('image/png');
+          };
+        };
+      });
+    </script>
+  </body>
+</html>

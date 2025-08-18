@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Convertir WEBP a JPG — ZetaConvert</title>
+    <meta name="description" content="Convierte imágenes WEBP a JPG gratis, online y en segundos. Optimiza tus fotos y hazlas compatibles con cualquier dispositivo." />
+    <link rel="canonical" href="https://zetaconvert.online/converters/webp-to-jpg.html" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Convertir WEBP a JPG — ZetaConvert" />
+    <meta property="og:description" content="Convierte imágenes WEBP a JPG fácil y rápido." />
+    <meta property="og:url" content="https://zetaconvert.online/converters/webp-to-jpg.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://zetaconvert.online/assets/icons/icon-512.png" />
+
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+  </head>
+  <body data-theme="auto">
+    <header class="header">
+      <nav class="nav">
+        <a href="../" class="brand">
+          <img src="../assets/img/logo.svg" alt="ZetaConvert logo" width="28" height="28">
+          <span>ZetaConvert</span>
+        </a>
+        <ul class="nav-links">
+          <li><a href="../">Inicio</a></li>
+          <li><a href="jpg-to-png.html">JPG→PNG</a></li>
+          <li><a href="png-to-jpg.html">PNG→JPG</a></li>
+          <li><a href="webp-to-jpg.html" aria-current="page">WEBP→JPG</a></li>
+          <li><a href="bmp-to-png.html">BMP→PNG</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <h1>Convertir WEBP a JPG</h1>
+        <p class="muted">Convierte imágenes en formato WEBP a JPG de alta compatibilidad. Gratis, rápido y online.</p>
+      </section>
+
+      <section class="converter panel">
+        <form id="converter-form">
+          <label for="file-upload">Selecciona un archivo WEBP:</label>
+          <input type="file" id="file-upload" accept="image/webp" required />
+
+          <button type="submit" class="btn primary">Convertir</button>
+        </form>
+
+        <div id="result" hidden>
+          <h2>Resultado</h2>
+          <a id="download-link" href="#" download="converted.jpg" class="btn success">Descargar JPG</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>© <span id="year"></span> ZetaConvert</p>
+    </footer>
+
+    <script>
+      const form = document.getElementById('converter-form');
+      const result = document.getElementById('result');
+      const downloadLink = document.getElementById('download-link');
+
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const file = document.getElementById('file-upload').files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+          const img = new Image();
+          img.src = reader.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            downloadLink.href = canvas.toDataURL('image/jpeg');
+            result.hidden = false;
+          };
+        };
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Convertir TXT a PDF — ZetaConvert</title>
+  <meta name="description" content="Convierte archivos TXT a PDF gratis. Transforma texto plano en documentos PDF listos para compartir." />
+  <link rel="canonical" href="https://zetaconvert.online/text/txt-to-pdf.html" />
+  <meta property="og:title" content="Convertir TXT a PDF — ZetaConvert" />
+  <meta property="og:description" content="Convierte TXT a PDF online, fácil y gratis." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://zetaconvert.online/text/txt-to-pdf.html" />
+  <meta property="og:image" content="../assets/icons/icon-512.png" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body data-theme="auto">
+  <header id="header"></header>
+
+  <main>
+    <section class="hero">
+      <h1>Convertir TXT a PDF</h1>
+      <p class="muted">Transformá tus archivos de texto en PDFs fáciles de compartir.</p>
+    </section>
+
+    <section class="converter panel">
+      <form id="converter-form">
+        <label for="file-upload">Selecciona un archivo TXT:</label>
+        <input type="file" id="file-upload" accept=".txt,text/plain" required />
+        <button type="submit" class="btn primary">Convertir</button>
+      </form>
+
+      <div id="result" hidden>
+        <h2>Resultado</h2>
+        <a id="download-link" href="#" download="converted.pdf" class="btn success">Descargar PDF</a>
+      </div>
+    </section>
+  </main>
+
+  <footer id="footer"></footer>
+  <script src="../assets/js/main.js"></script>
+  <script src="../assets/js/ui.js"></script>
+  <script src="../assets/js/i18n.js"></script>
+  <script src="../assets/js/theme.js"></script>
+  <script src="../assets/js/forms.js"></script>
+  <script src="../assets/js/converter.js"></script>
+
+  <script>
+    initConverterPage({
+      inputAccept: ".txt,text/plain",
+      outputExt: "pdf",
+      apiEndpoint: "/api/txt-to-pdf"
+    });
+  </script>
+</body>
+</html>

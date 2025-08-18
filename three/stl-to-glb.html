@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Convertir STL a GLB — ZetaConvert</title>
+  <meta name="description" content="Convierte archivos STL a GLB online. Ideal para visualización 3D en web y flujos modernos." />
+  <link rel="canonical" href="https://zetaconvert.online/three/stl-to-glb.html" />
+  <meta property="og:title" content="Convertir STL a GLB — ZetaConvert" />
+  <meta property="og:description" content="STL a GLB en línea, simple y rápido." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://zetaconvert.online/three/stl-to-glb.html" />
+  <meta property="og:image" content="../assets/icons/icon-512.png" />
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body data-theme="auto">
+  <header class="header">
+    <nav class="nav" aria-label="Principal">
+      <a href="../" class="brand">
+        <img src="../assets/img/logo.svg" alt="ZetaConvert logo" width="28" height="28">
+        <span>ZetaConvert</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="../">Inicio</a></li>
+        <li><a href="../converters/jpg-to-png.html">JPG→PNG</a></li>
+        <li><a href="../converters/png-to-jpg.html">PNG→JPG</a></li>
+        <li><a href="../text/">Texto</a></li>
+        <li><a href="./" aria-current="page">3D</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero">
+      <h1>Convertir STL a GLB</h1>
+      <p class="muted">Sube tu STL y obtén un GLB ligero y compatible con visores web.</p>
+    </section>
+
+    <section class="converter panel">
+      <form id="converter-form" aria-label="Conversor STL a GLB">
+        <label for="file-upload" class="file-label">Selecciona tu STL:</label>
+        <input type="file" id="file-upload" accept=".stl,model/stl" required />
+
+        <div class="options grid2">
+          <label>
+            <span>Decimado (reducción de polígonos)</span>
+            <input type="range" id="decimate" min="0" max="80" step="5" value="20" />
+          </label>
+          <label>
+            <span>Unidades</span>
+            <select id="units">
+              <option value="mm" selected>mm</option>
+              <option value="cm">cm</option>
+              <option value="m">m</option>
+            </select>
+          </label>
+        </div>
+
+        <button type="submit" class="btn primary">Convertir</button>
+      </form>
+
+      <div id="progress" class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" hidden>
+        <div class="bar" id="bar" style="width:0%"></div>
+      </div>
+
+      <div id="result" hidden>
+        <h2>Resultado</h2>
+        <a id="download-link" href="#" download="converted.glb" class="btn success">Descargar GLB</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="foot">
+      © <span id="year"></span> ZetaConvert —
+      <a href="../legal/terms.html">Términos</a> ·
+      <a href="../legal/privacy.html">Privacidad</a>
+    </div>
+  </footer>
+
+  <script src="../assets/js/theme.js" defer></script>
+  <script src="../assets/js/ui.js" defer></script>
+  <script src="../assets/js/forms.js" defer></script>
+  <script>
+    // Placeholder de progreso + hook a /api/stl-to-glb
+    const form = document.getElementById('converter-form');
+    const result = document.getElementById('result');
+    const link = document.getElementById('download-link');
+    const bar = document.getElementById('bar');
+    const progress = document.getElementById('progress');
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const f = document.getElementById('file-upload').files[0];
+      if (!f) return;
+      progress.hidden = false; bar.style.width = '30%';
+      setTimeout(()=>{ bar.style.width = '65%'; }, 400);
+      setTimeout(()=>{
+        bar.style.width = '100%';
+        result.hidden = false;
+        // Blob GLB vacío de ejemplo; reemplazar por llamada real a /api/stl-to-glb
+        const blob = new Blob([JSON.stringify({placeholder:true})], {type:'model/gltf-binary'});
+        link.href = URL.createObjectURL(blob);
+      }, 900);
+    });
+
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
