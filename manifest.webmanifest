@@ -1,13 +1,15 @@
 {
-    "name": "ZetaConvert",
-    "short_name": "ZetaConvert",
-    "start_url": "/",
-    "display": "standalone",
-    "background_color": "#ffffff",
-    "theme_color": "#e1192a",
-    "icons": [
-      { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-      { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
-    ]
-  }
-  
+  "name": "ZetaConvert — Conversor de archivos",
+  "short_name": "ZetaConvert",
+  "description": "Convierte imágenes y documentos online. Rápido, claro y profesional.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0b0d10",
+  "theme_color": "#e1192a",
+  "lang": "es",
+  "icons": [
+    { "src": "/assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
