@@ -287,9 +287,18 @@
         document.documentElement.classList.toggle('dark', theme === 'dark');
       }
     }
-    window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ()=> {
-      if (state.theme==='auto') applyTheme();
-    });
+    (function attachPrefersDarkListener(){
+  if (!window.matchMedia) return;
+  const mql = window.matchMedia('(prefers-color-scheme: dark)');
+  const handler = () => { if (state.theme === 'auto') applyTheme(); };
+  if (mql.addEventListener) {
+    mql.addEventListener('change', handler);
+  } else if (mql.addListener) {
+    // Safari viejos / Android WebView
+    mql.addListener(handler);
+  }
+})();
+
 
     $("#lang").addEventListener("change", (e)=>{
       state.lang = e.target.value;
