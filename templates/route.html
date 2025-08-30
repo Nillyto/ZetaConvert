@@ -14,6 +14,35 @@
 <section class="panel converter">
   <h2>Subí tu archivo</h2>
   <form id="convertForm" action="/api/convert" method="post" enctype="multipart/form-data">
+    <div class="panel-head">
+      <h1 class="h-title">{{ route.title }}</h1>
+    
+      <div class="format-switch">
+        <label for="formatSwitch" class="sr-only">Cambiar conversión</label>
+        <select id="formatSwitch" class="select">
+          {# 1) Priorizamos herramientas que comparten el mismo "from" #}
+          <optgroup label="Relacionados">
+            {% set current_from = route.exts_from or [] %}
+            {% for r in routes_list %}
+              {% if r.slug != route.slug and (r.exts_from|length > 0) and (current_from|length > 0)
+                    and (r.exts_from|select('in', current_from)|list|length > 0) %}
+                <option value="{{ url_for('route_page', slug=r.slug) }}">{{ r.title }}</option>
+              {% endif %}
+            {% endfor %}
+          </optgroup>
+    
+          {# 2) Todos los demás #}
+          <optgroup label="Todos los conversores">
+            {% for r in routes_list %}
+              {% if r.slug != route.slug %}
+                <option value="{{ url_for('route_page', slug=r.slug) }}">{{ r.title }}</option>
+              {% endif %}
+            {% endfor %}
+          </optgroup>
+        </select>
+      </div>
+    </div>
+    
     <input type="hidden" name="route" value="{{ route.slug }}">
     <div class="grid2">
       <div>

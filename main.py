@@ -190,9 +190,16 @@ async def route_page(request: Request, slug: str):
     page_title = route.title + " online"
     page_desc  = route.desc + " Gratis y sin registro."
     return templates.TemplateResponse(
-        "route.html",
-        {"request": request, "route": route, "page_title": page_title, "page_desc": page_desc, "year": time.strftime("%Y")}
-    )
+    "route.html",
+    {
+      "request": request,
+      "route": route,
+      "routes_list": ROUTES,  # <- importante para el selector
+      "page_title": page_title,
+      "page_desc": page_desc,
+      "year": time.strftime("%Y"),
+    }
+)
 
 @app.get("/privacidad", response_class=HTMLResponse, name="privacy")
 async def privacy(request: Request):
