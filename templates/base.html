@@ -31,7 +31,41 @@
 
 
   
-  
+  <script>
+    (function () {
+      const KEY = 'zc-theme';
+      const root = document.documentElement;
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+    
+      function apply(mode) {
+        if (mode === 'dark') {
+          root.classList.add('dark');
+          metaTheme && metaTheme.setAttribute('content', '#0f1117');
+        } else {
+          root.classList.remove('dark');
+          metaTheme && metaTheme.setAttribute('content', '#e1192a');
+        }
+      }
+    
+      // Al cargar: prioriza preferencia guardada; si no, usa prefers-color-scheme
+      const stored = localStorage.getItem(KEY);
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = stored || (prefersDark ? 'dark' : 'light');
+      apply(initial);
+    
+      // API global minimalista (sin depender de otros scripts)
+      window.ZCTheme = {
+        set(mode) { localStorage.setItem(KEY, mode); apply(mode); },
+        toggle() { this.set(root.classList.contains('dark') ? 'light' : 'dark'); }
+      };
+    
+      // Si el sistema cambia (sólo cuando el usuario NO fijó preferencia)
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+        if (!localStorage.getItem(KEY)) apply(e.matches ? 'dark' : 'light');
+      });
+    })();
+    </script>
+    
   
 
   <!-- AdSense: reemplazá ca-pub-XXXX por el tuyo al aprobarse -->
