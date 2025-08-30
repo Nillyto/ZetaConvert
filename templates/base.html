@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}ZetaConvert · Conversor de archivos online{% endblock %}</title>
+  <meta name="description" content="{% block meta_desc %}Convierte imágenes y PDFs en segundos. Gratis, simple y privado.{% endblock %}">
+  <link rel="canonical" href="{{ request.url }}">
+
+  <!-- Open Graph / Twitter -->
+  <meta property="og:title" content="{% block og_title %}ZetaConvert · Conversor de archivos{% endblock %}">
+  <meta property="og:description" content="{% block og_desc %}Convertí imágenes y PDFs con un clic.{% endblock %}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ request.url }}">
+  <meta property="og:image" content="{{ url_for('static', path='icons/icon-512.png') }}">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <!-- PWA / Icons -->
+  <link rel="icon" sizes="192x192" href="{{ url_for('static', path='icons/icon-192.png') }}">
+  <link rel="icon" sizes="512x512" href="{{ url_for('static', path='icons/icon-512.png') }}">
+  <link rel="manifest" href="{{ url_for('manifest') }}">
+  <meta name="theme-color" content="#e1192a">
+
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jost:wght@300..700&display=swap" rel="stylesheet">
+
+
+  <!-- CSS (cache-busting con ?v={{ year }}) -->
+  <link rel="stylesheet" href="{{ url_for('static', path='css/styles.css') }}?v={{ STYLE_VERSION }}">
+
+
+  
+  
+  
+
+  <!-- AdSense: reemplazá ca-pub-XXXX por el tuyo al aprobarse -->
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXX" crossorigin="anonymous"></script>
+
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"WebSite","name":"ZetaConvert","url":"https://zetaconvert.online/","potentialAction":{"@type":"SearchAction","target":"https://zetaconvert.online/?q={q}","query-input":"required name=q"}}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"Organization","name":"ZetaConvert","url":"https://zetaconvert.online/","logo":"https://zetaconvert.online/static/icons/icon-512.png"}
+  </script>
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@type":"SoftwareApplication","name":"ZetaConvert","applicationCategory":"UtilityApplication","operatingSystem":"Web","url":"https://zetaconvert.online/","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
+  </script>
+
+  <!-- Dark mode: aplicar preferencia antes de pintar (evita “flash”) -->
+  <script>
+    (function() {
+      const root = document.documentElement;
+      const stored = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (stored === "dark" || (!stored && prefersDark)) {
+        root.classList.add("dark");
+      }
+    })();
+  </script>
+  
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Saltar al contenido</a>
+
+  <header class="header">
+    <nav class="nav">
+      <a class="brand" href="{{ url_for('home') }}" aria-label="ZetaConvert">
+        <img src="{{ url_for('static', path='icons/icon-192.png') }}" alt="" width="28" height="28">
+        <span class="brand-name">ZetaConvert</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="{{ url_for('home') }}">Inicio</a></li>
+        <li><a href="{{ url_for('routes') }}">Herramientas</a></li>
+        <li><a href="{{ url_for('privacy') }}">Privacidad</a></li>
+        <li><a href="{{ url_for('terms') }}">Términos</a></li>
+      </ul>
+      <div class="actions">
+        <button id="toggleTheme" class="btn compact" type="button" aria-label="Cambiar tema">🌗</button>
+      </div>
+    </nav>
+  </header>
+
+  {% block hero %}{% endblock %}
+  <main id="contenido">{% block content %}{% endblock %}</main>
+
+  <footer class="footer">
+    <div class="foot">
+      <span>© {{ year }} ZetaConvert</span>
+      <a href="{{ url_for('ads_txt') }}">ads.txt</a>
+    </div>
+  </footer>
+
+  <!-- JS -->
+  <script src="{{ url_for('static', path='js/main.js') }}" defer></script>
+  <script>
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('/static/js/sw.js').catch(()=>{}));
+    }
+  </script>
+  <script>
+    // Toggle del tema (si preferís, movelo a main.js)
+    document.addEventListener("DOMContentLoaded", () => {
+      const toggle = document.getElementById("toggleTheme");
+      if (!toggle) return;
+      const root = document.documentElement;
+      toggle.addEventListener("click", () => {
+        root.classList.toggle("dark");
+        localStorage.theme = root.classList.contains("dark") ? "dark" : "light";
+      });
+    });
+  </script>
+</body>
+</html>

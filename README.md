@@ -1,17 +1,15 @@
-# ZetaConvert
+# ZetaConvert · Innovator Edition
 
-Conversor de archivos online (imágenes, texto y 3D). Frontend estático (Netlify) + backend en Render (Flask + Pillow).
+Conversor online con **FastAPI**, **Pillow** y **PyMuPDF**. Incluye:
+- Opciones avanzadas: calidad JPG/WEBP, DPI PDF→imagen, rango de páginas, resize y quitar metadatos.
+- UX: drag & drop, pegar desde portapapeles, pre-optimización en navegador, barra de progreso.
+- SEO: JSON-LD (WebSite, SoftwareApplication, HowTo, FAQ), sitemap, robots, canonical, OG/Twitter.
+- PWA: service worker con cache de assets y modo offline básico.
+- Ads: snippet de AdSense + `ads.txt`.
 
-## Estructura
-- `index.html` + páginas en `converters/`, `text/`, `three/`, `legal/`
-- CSS en `assets/css/styles.css`
-- JS en `assets/js/` (UI, i18n, tema, formularios, conversor)
-- PWA: `manifest.webmanifest`, `sw.js`
-- SEO: `robots.txt`, `sitemap.xml`
-- Netlify: `netlify.toml` (redirects, proxy `/api`)
-
-## Desarrollo
-1. Clona el repo.
-2. Sirve estáticos (por ejemplo):
-   ```bash
-   npx serve .
+## Ejecutar
+```
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+```

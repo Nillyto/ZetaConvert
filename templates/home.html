@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}ZetaConvert · Conversor de archivos online{% endblock %}
+{% block meta_desc %}Convertí imágenes, video, 3D y documentos en segundos. Gratis, simple y privado.{% endblock %}
+
+{% block hero %}
+<section class="hero">
+  <div class="container">
+    <h1>Conversión de archivos profesional</h1>
+    <p class="muted">Imágenes, video, 3D y documentos. Sin registro. Resultados rápidos y privados.</p>
+
+    <!-- Buscador con resultados flotantes -->
+    <div class="searchbox mt-2" role="search">
+      <input id="formatSearch" class="search-input" type="text" placeholder="Buscar formato o tarea (ej: heic, mp4, unir pdf)" aria-label="Buscar formato o tarea" autocomplete="off">
+      <button id="clearSearch" class="btn compact" type="button" aria-label="Limpiar búsqueda">Limpiar</button>
+
+      <!-- popover -->
+      <div id="searchPopover" class="popover" role="listbox" aria-label="Resultados de búsqueda" aria-expanded="false" hidden>
+        <div id="searchList" class="popover-list"></div>
+        <div class="popover-foot"><small id="searchCount" class="muted"></small></div>
+      </div>
+    </div>
+
+    <!-- Tabs categorías -->
+    <div class="cat-tabs" role="tablist" aria-label="Categorías">
+      <button class="cat-tab active" data-cat="imagenes" role="tab" aria-selected="true">Imágenes</button>
+      <button class="cat-tab" data-cat="video" role="tab" aria-selected="false">Video</button>
+      <button class="cat-tab" data-cat="3d" role="tab" aria-selected="false">3D</button>
+      <button class="cat-tab" data-cat="documentos" role="tab" aria-selected="false">Documentos</button>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
+{% block content %}
+<section class="container">
+  <!-- Panel: Imágenes -->
+  <section class="panel section-accent cat-panel show" id="panel-imagenes" aria-labelledby="tab-imagenes" role="tabpanel">
+    <div class="panel-head">
+      <h2>Imágenes</h2>
+      <p class="muted">Conversiones más usadas para web y móvil.</p>
+    </div>
+    <div class="cards">
+      {% for r in routes_list if r.category == 'imagenes' %}
+      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+        <strong class="card-title">{{ r.title }}</strong>
+        <p class="muted">{{ r.desc }}</p>
+        {% if r.exts_from or r.exts_to %}
+        <div class="meta">
+          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Panel: Video -->
+  <section class="panel section-accent cat-panel" id="panel-video" aria-labelledby="tab-video" role="tabpanel" hidden>
+    <div class="panel-head">
+      <h2>Video</h2>
+      <p class="muted">Extracción de audio y conversiones compatibles.</p>
+    </div>
+    <div class="cards">
+      {% for r in routes_list if r.category == 'video' %}
+      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+        <strong class="card-title">{{ r.title }}</strong>
+        <p class="muted">{{ r.desc }}</p>
+        {% if r.exts_from or r.exts_to %}
+        <div class="meta">
+          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Panel: 3D -->
+  <section class="panel section-accent cat-panel" id="panel-3d" aria-labelledby="tab-3d" role="tabpanel" hidden>
+    <div class="panel-head">
+      <h2>3D</h2>
+      <p class="muted">Conversión de mallas y formatos CAD frecuentes.</p>
+    </div>
+    <div class="cards">
+      {% for r in routes_list if r.category == '3d' %}
+      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+        <strong class="card-title">{{ r.title }}</strong>
+        <p class="muted">{{ r.desc }}</p>
+        {% if r.exts_from or r.exts_to %}
+        <div class="meta">
+          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- Panel: Documentos -->
+  <section class="panel section-accent cat-panel" id="panel-documentos" aria-labelledby="tab-documentos" role="tabpanel" hidden>
+    <div class="panel-head">
+      <h2>Documentos</h2>
+      <p class="muted">Herramientas PDF y conversiones Office.</p>
+    </div>
+    <div class="cards">
+      {% for r in routes_list if r.category == 'documentos' %}
+      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+        <strong class="card-title">{{ r.title }}</strong>
+        <p class="muted">{{ r.desc }}</p>
+        {% if r.exts_from or r.exts_to %}
+        <div class="meta">
+          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+        </div>
+        {% endif %}
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+
+<!-- JS: tabs + buscador popover -->
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  // Tabs
+  const tabs = [...document.querySelectorAll('.cat-tab')];
+  const panels = {
+    'imagenes': document.getElementById('panel-imagenes'),
+    'video': document.getElementById('panel-video'),
+    '3d': document.getElementById('panel-3d'),
+    'documentos': document.getElementById('panel-documentos')
+  };
+  function show(cat){
+    tabs.forEach(t=>{ const on = t.dataset.cat===cat; t.classList.toggle('active', on); t.setAttribute('aria-selected', on?'true':'false'); });
+    Object.entries(panels).forEach(([k,el])=>{
+      const on = (k===cat); el.toggleAttribute('hidden', !on); el.classList.toggle('show', on);
+    });
+  }
+  tabs.forEach(t=>t.addEventListener('click', ()=>show(t.dataset.cat)));
+
+  // Dataset buscador
+  let data = [];
+  try {
+    const r = await fetch('/formats.json', {cache:'no-store'}); const j = await r.json();
+    data = (j && j.items) ? j.items : [];
+  } catch(e) {}
+
+  // Popover
+  const input   = document.getElementById('formatSearch');
+  const clearBt = document.getElementById('clearSearch');
+  const pop     = document.getElementById('searchPopover');
+  const list    = document.getElementById('searchList');
+  const count   = document.getElementById('searchCount');
+
+  function closePop(){ pop.hidden = true; pop.setAttribute('aria-expanded','false'); }
+  function openPop(){ pop.hidden = false; pop.setAttribute('aria-expanded','true'); }
+
+  function render(items, q){
+    list.innerHTML = '';
+    count.textContent = items.length ? (items.length + ' resultado' + (items.length>1?'s':'')) : 'Sin resultados';
+    for(const it of items.slice(0, 20)){
+      const a = document.createElement('a');
+      a.className = 'popover-item';
+      a.href = '/r/' + it.slug;
+      const meta = [];
+      if (it.from?.length) meta.push('de: ' + it.from.join(', '));
+      if (it.to?.length) meta.push('a: ' + it.to.join(', '));
+      a.innerHTML = `<div class="pi-title">${it.title}</div><div class="pi-meta">${meta.join(' · ')}</div>`;
+      list.appendChild(a);
+    }
+  }
+
+  function search(){
+    const q = input.value.trim().toLowerCase();
+    if(!q){ closePop(); return; }
+    const out = data.filter(d=>{
+      const hay = [d.title,d.desc,d.category, ...(d.from||[]), ...(d.to||[]), ...(d.keywords||[])]
+        .join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    render(out, q); openPop();
+  }
+
+  input.addEventListener('input', search);
+  input.addEventListener('focus', ()=>{ if(input.value.trim()) openPop(); });
+  document.addEventListener('click', (e)=>{ if(!e.target.closest('.searchbox')) closePop(); });
+  clearBt.addEventListener('click', ()=>{ input.value=''; closePop(); input.focus(); });
+});
+</script>
+{% endblock %}
