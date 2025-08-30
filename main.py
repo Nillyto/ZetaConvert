@@ -2,6 +2,7 @@ import os, time, hashlib, io
 from typing import List, Optional
 from pathlib import Path
 from collections import defaultdict
+import json
 
 from fastapi import FastAPI, Request, UploadFile, File, Form, Response, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
@@ -187,19 +188,50 @@ async def route_page(request: Request, slug: str):
     route = get_route(slug)
     if not route:
         raise HTTPException(404)
+
+    # Relacionadas: comparten input extensions
+    from_exts = set(route.exts_from or [])
+    related = []
+    for r in ROUTES:
+        if r.slug == route.slug:
+            continue
+        if not r.exts_from:
+            continue
+        if from_exts.intersection(set(r.exts_from)):
+            related.append(r)
+
+    # Unión de todos los targets posibles para este tipo de entrada
+    all_targets = set(route.to or [])
+    for r in related:
+        for t in (r.exts_to or []):
+            all_targets.add(t)
+
+    # Mapa target->slug (elige el primer conversor que soporte ese target)
+    target_to_slug = {}
+    # Prioridad: la propia ruta si lo soporta
+    for t in (route.exts_to or []):
+        target_to_slug[t] = route.slug
+    # Luego, rellena con las relacionadas
+    for r in related:
+        for t in (r.exts_to or []):
+            target_to_slug.setdefault(t, r.slug)
+
     page_title = route.title + " online"
     page_desc  = route.desc + " Gratis y sin registro."
     return templates.TemplateResponse(
     "route.html",
     {
-      "request": request,
-      "route": route,
-      "routes_list": ROUTES,  # <- importante para el selector
-      "page_title": page_title,
-      "page_desc": page_desc,
-      "year": time.strftime("%Y"),
+        "request": request,
+        "route": route,
+        "routes_list": ROUTES,
+        "all_targets": sorted(all_targets),     # lista de strings (png, jpg, webp, etc.)
+        "target_to_slug": target_to_slug,       # dict: {"png": "jpg-to-png", "webp": "jpg-to-webp", ...}
+        "page_title": page_title,
+        "page_desc": page_desc,
+        "year": time.strftime("%Y"),
     }
 )
+
 
 @app.get("/privacidad", response_class=HTMLResponse, name="privacy")
 async def privacy(request: Request):

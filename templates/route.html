@@ -50,10 +50,47 @@
         <input id="file" name="file{% if route.multi %}s{% endif %}" type="file" {% if route.multi %}multiple{% endif %} accept="{{ route.accept }}" required>
       </div>
       <div>
-        <label for="target">Convertir a</label>
-        <select id="target" name="target" required>
-          {% for fmt in route.to %}<option value="{{ fmt }}">{{ fmt|upper }}</option>{% endfor %}
-        </select>
+        <label for="target">Convertir a:</label>
+
+<select id="target"
+        name="target"
+        required
+        data-route-template="{{ url_for('route_page', slug='__SLUG__') }}"
+        data-current-slug="{{ route.slug }}"
+        style="text-transform: uppercase;">
+  {% for t in all_targets %}
+    <option
+      value="{{ t }}"
+      data-slug="{{ target_to_slug.get(t, '') }}"
+      {% if route.to and (t == route.to[0]) %}selected{% endif %}>
+      {{ t }}
+    </option>
+  {% endfor %}
+</select>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  var sel = document.getElementById('target');
+  if (!sel) return;
+
+  var currentSlug = sel.getAttribute('data-current-slug');
+  var routeTpl    = sel.getAttribute('data-route-template');
+
+  sel.addEventListener('change', function () {
+    var opt  = sel.options[sel.selectedIndex];
+    var slug = opt.getAttribute('data-slug');     // a qué conversor ir para ese target
+
+    if (slug && slug !== currentSlug) {
+      var next = routeTpl.replace('__SLUG__', slug);
+      window.location.href = next;
+      return;
+    }
+    // Si no cambia de slug, la ruta actual soporta el target: submit normal del form.
+  });
+});
+</script>
+
+
       </div>
     </div>
 
