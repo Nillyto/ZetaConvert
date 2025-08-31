@@ -16,85 +16,55 @@
 {% endblock %}
 
 {% block content %}
-<section class="panel converter section-accent">
+<section class="panel converter" id="zcConverter" aria-label="Conversor de archivos">
   <div class="panel-head">
-    <h2 class="h-title">{{ route.title }}</h2>
+    <div>
+      <h2 class="h-title">{{ route.title }}</h2>
+      <p class="muted">{{ route.desc }} Gratis y sin registro.</p>
+    </div>
 
-    <div class="format-switch">
-      <label for="formatSwitch" class="sr-only">Cambiar conversión</label>
-      <select id="formatSwitch" class="select">
-        <optgroup label="Relacionados">
-          {% set current_from = route.exts_from or [] %}
-          {% for r in routes_list %}
-            {% if r.slug != route.slug and (r.exts_from|length > 0) and (current_from|length > 0)
-                  and (r.exts_from|select('in', current_from)|list|length > 0) %}
-              <option value="{{ url_for('route_page', slug=r.slug) }}">{{ r.title }}</option>
-            {% endif %}
-          {% endfor %}
-        </optgroup>
-        <optgroup label="Todos los conversores">
-          {% for r in routes_list if r.slug != route.slug %}
-            <option value="{{ url_for('route_page', slug=r.slug) }}">{{ r.title }}</option>
-          {% endfor %}
-        </optgroup>
+    <!-- Formato de salida (global) con redirección inteligente -->
+    <div>
+      <label for="globalTarget" class="sr-only">Formato de salida</label>
+      <select id="globalTarget"
+              class="select"
+              data-route-template="{{ url_for('route_page', slug='__SLUG__') }}"
+              data-current-slug="{{ route.slug }}"
+              style="text-transform: uppercase;">
+        {% for t in all_targets %}
+          <option value="{{ t }}"
+                  data-slug="{{ target_to_slug.get(t, '') }}"
+                  {% if route.to and (t == route.to[0]) %}selected{% endif %}>
+            {{ t }}
+          </option>
+        {% endfor %}
       </select>
     </div>
   </div>
 
-  <form id="convertForm" action="/api/convert" method="post" enctype="multipart/form-data">
-    <input type="hidden" name="route" value="{{ route.slug }}">
+  <!-- Zona de drop + botón -->
+  <div id="dropZone" class="dropzone" role="button" tabindex="0" aria-label="Soltá aquí tus archivos o hacé clic para seleccionar">
+    <strong>Soltá tus archivos aquí</strong>
+    <span class="muted">o hacé clic para seleccionar (máx. 5)</span>
+    <input id="fileInput" type="file" hidden
+           {% if route.multi %}multiple{% else %}multiple{% endif %}
+           accept="{{ route.accept }}">
+  </div>
 
-    <div class="grid2">
-      <div>
-        <label for="file">Archivo</label>
-        <input id="file"
-               name="file{% if route.multi %}s{% endif %}"
-               type="file"
-               {% if route.multi %}multiple{% endif %}
-               accept="{{ route.accept }}"
-               required>
-      </div>
+  <!-- Cola -->
+  <div id="fileQueue" class="queue" aria-live="polite"></div>
 
-      <div>
-        <label for="target">Convertir a</label>
-        <select id="target" name="target" required style="text-transform: uppercase;"></select>
-      </div>
-    </div>
+  <!-- Acciones -->
+  <div class="actions mt-2">
+    <button id="btnAdd" class="btn">Agregar archivos</button>
+    <button id="btnConvertAll" class="btn primary">Convertir todo</button>
+    <button id="btnClear" class="btn" type="button">Limpiar</button>
+  </div>
 
-    <details class="expander mt-2">
-      <summary>Opciones avanzadas</summary>
-      <div class="grid3 mt-1">
-        <label>Calidad (JPG/WEBP)
-          <input type="range" name="quality" min="50" max="100" value="90" step="1">
-        </label>
-        <label>DPI (PDF→imagen)
-          <input type="number" name="dpi" min="72" max="300" value="144">
-        </label>
-        <label>Páginas (PDF)
-          <input type="text" name="pages" placeholder="1-3,5">
-        </label>
-      </div>
-      <div class="grid3 mt-1">
-        <label>Ancho (px)
-          <input type="number" name="resize_w" min="0" value="0">
-        </label>
-        <label>Alto (px)
-          <input type="number" name="resize_h" min="0" value="0">
-        </label>
-        <label class="chk">
-          <input type="checkbox" name="stripmeta" value="1" checked> Quitar metadatos
-        </label>
-      </div>
-      <label class="chk">
-        <input id="precompress" type="checkbox"> Optimizar en el navegador antes de subir
-      </label>
-    </details>
-
-    <button class="btn primary" type="submit" data-animate="press">Convertir</button>
-    <div class="progress mt-2" role="progressbar" aria-label="Progreso">
-      <div class="bar" id="progressBar"></div>
-    </div>
-  </form>
+  <!-- Progreso global -->
+  <div class="progress mt-2" role="progressbar" aria-label="Progreso total">
+    <div class="bar" id="overallBar" style="width:0%"></div>
+  </div>
 </section>
 
 <section class="panel">
@@ -108,8 +78,12 @@
 </section>
 
 {# ===== JSON seguro inyectado por backend ===== #}
-<script type="application/json" id="targets-json">{{ all_targets_json | safe }}</script>
-<script type="application/json" id="map-json">{{ target_to_slug_json | safe }}</script>
+<script id="targets-json" type="application/json">
+  {{ all_targets|tojson }}
+  </script>
+  <script id="map-json" type="application/json">
+  {{ target_to_slug|tojson }}
+  </script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
