@@ -203,13 +203,14 @@ async def routes_page(request: Request):
     )
 
 
+
 @app.get("/r/{slug}", response_class=HTMLResponse, name="route_page")
 async def route_page(request: Request, slug: str):
     route = get_route(slug)
     if not route:
         raise HTTPException(404)
 
-    # Relacionadas por input
+    # relacionadas por input compatible
     from_exts = set(route.exts_from or [])
     related = []
     for r in ROUTES:
@@ -220,43 +221,40 @@ async def route_page(request: Request, slug: str):
         if from_exts.intersection(set(r.exts_from)):
             related.append(r)
 
-    # Targets posibles (esta ruta + relacionadas)
-    all_targets = set(route.to or [])
+    # targets posibles
+    all_targets = set(route.exts_to or route.to or [])
     for r in related:
         for t in (r.exts_to or []):
             all_targets.add(t)
 
-    # target -> slug (prefiere la propia ruta si aplica)
+    # mapa target -> slug
     target_to_slug = {}
-    for t in (route.exts_to or []):
+    for t in (route.exts_to or route.to or []):
         target_to_slug[t] = route.slug
     for r in related:
         for t in (r.exts_to or []):
             target_to_slug.setdefault(t, r.slug)
 
-    # JSON seguro para incrustar en <script>
-    target_to_slug_json = json.dumps(target_to_slug, ensure_ascii=False)
-    all_targets_json = json.dumps(sorted(all_targets), ensure_ascii=False)
-
+    # SEO
     page_title = f"Convertir {route.title} online gratis"
-    page_desc  = f"{route.desc} Convertí {', '.join(route.exts_from or [])} a {', '.join(route.exts_to or route.to or [])} en segundos. Rápido, privado y sin registro."
+    page_desc  = f"{route.desc} Convertí {', '.join(route.exts_from or [])} a {', '.join(sorted(all_targets))} en segundos. Rápido, privado y sin registro."
 
+    # 🔧 PASAR JSON YA SERIALIZADO
+    all_targets_json = json.dumps(sorted(all_targets))
+    target_to_slug_json = json.dumps(target_to_slug)
 
     return templates.TemplateResponse(
         "route.html",
         {
-            "request": request,
-            "route": route,
-            "routes_list": ROUTES,
-            "all_targets": sorted(all_targets),           # para render server-side si querés
-            "target_to_slug_json": target_to_slug_json,   # para JS (sin |tojson)
-            "all_targets_json": all_targets_json,         # para JS
-            "page_title": page_title,
-            "page_desc": page_desc,
-            "canonical_url": abs_url(request, f"/r/{route.slug}"),
-            "og_image_url": abs_url(request, "/static/og/og-default.png"),
-            "year": time.strftime("%Y"),
-        }
+        "request": request,
+        "route": route,
+        "routes_list": ROUTES,
+        "all_targets_json": all_targets_json,
+        "target_to_slug_json": target_to_slug_json,
+        "page_title": page_title,
+        "page_desc": page_desc,
+        "year": time.strftime("%Y"),
+    },
     )
 
 
