@@ -1,0 +1,36 @@
+# ZetaConvert - Dockerfile (Dev Preview)
+FROM python:3.12-slim
+
+# System deps for Pillow, PyMuPDF, and general build tools
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libjpeg62-turbo-dev zlib1g-dev \
+    libfreetype6-dev \
+    libopenjp2-7-dev \
+    libtiff5-dev \
+    liblcms2-dev \
+    libwebp-dev \
+    libharfbuzz-dev \
+    libfribidi-dev \
+    libxcb1 \
+    libxext6 \
+    libxrender1 \
+    ghostscript \
+    poppler-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy only requirements first for layering
+COPY requirements.txt /app/requirements.txt
+
+# Dev extras (watchfiles for --reload, and uvicorn)
+RUN pip install --no-cache-dir -r /app/requirements.txt && \    pip install --no-cache-dir uvicorn==0.30.6 watchfiles==1.1.0
+
+# Copy project (you'll mount in compose for hot-reload, but include for completeness)
+COPY . /app
+
+EXPOSE 8000
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

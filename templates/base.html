@@ -2,11 +2,27 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
+  <link rel="canonical" href="{{ canonical_url }}">
   <title>{% block title %}ZetaConvert · Conversor de archivos online{% endblock %}</title>
-<meta name="description" content="{% block meta_desc %}Convierte imágenes, videos, 3D y documentos en segundos. Gratis, simple y privado.{% endblock %}">
-<link rel="canonical" href="{{ canonical_url }}">
+<meta name="description" content="{% block meta_desc %}Convierte imágenes y PDFs en segundos. Gratis, simple y privado.{% endblock %}">
 <meta property="og:title" content="{% block og_title %}ZetaConvert · Conversor de archivos{% endblock %}">
-<meta property="og:description" content="{% block og_desc %}Convertí JPG, PNG, PDF, MP4, DOCX y más con un clic.{% endblock %}">
+<meta property="og:description" content="{% block og_desc %}Convertí imágenes y PDFs con un clic.{% endblock %}">
+
+<!-- Marca / App -->
+<script type="application/ld+json">
+{
+  "@context":"https://schema.org",
+  "@type":"SoftwareApplication",
+  "name":"ZetaConvert",
+  "applicationCategory":"MultimediaApplication",
+  "operatingSystem":"Web",
+  "url":"https://zetaconvert.online/",
+  "offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}
+}
+</script>
+
+{% block extra_head %}{% endblock %}
+
 <meta property="og:type" content="website">
 <meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:image" content="{{ og_image_url }}">

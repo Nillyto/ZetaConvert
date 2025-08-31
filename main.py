@@ -13,7 +13,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from engines.image_engine import convert_image
 from engines import image_engine, pdf_engine
-
+from datetime import datetime
 # ====== Paths & App ======
 BASE_DIR   = Path(__file__).parent.resolve()
 STATIC_DIR = BASE_DIR / "static"
@@ -238,8 +238,9 @@ async def route_page(request: Request, slug: str):
     target_to_slug_json = json.dumps(target_to_slug, ensure_ascii=False)
     all_targets_json = json.dumps(sorted(all_targets), ensure_ascii=False)
 
-    page_title = route.title + " online"
-    page_desc  = route.desc + " Gratis y sin registro."
+    page_title = f"Convertir {route.title} online gratis"
+    page_desc  = f"{route.desc} Convertí {', '.join(route.exts_from or [])} a {', '.join(route.exts_to or route.to or [])} en segundos. Rápido, privado y sin registro."
+
 
     return templates.TemplateResponse(
         "route.html",
@@ -375,11 +376,24 @@ def ads_txt():
 @app.get("/sitemap.xml", response_class=PlainTextResponse)
 def sitemap(request: Request):
     base = str(request.base_url)[:-1]
-    urls = [f"{base}/", f"{base}/routes", f"{base}/privacidad", f"{base}/terminos"] + [f"{base}/r/{r.slug}" for r in ROUTES]
-    items = "".join(f"<url><loc>{u}</loc><changefreq>weekly</changefreq><priority>0.8</priority></url>" for u in urls)
+    static_urls = [
+        f"{base}/",
+        f"{base}/routes",
+        f"{base}/privacidad",
+        f"{base}/terminos",
+    ]
+    route_urls = [f"{base}/r/{r.slug}" for r in ROUTES]
+
+    def url_xml(u, priority="0.8", changefreq="weekly"):
+        # lastmod ISO8601 de hoy (podés guardar por ruta si querés)
+        lastmod = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        return f"<url><loc>{u}</loc><lastmod>{lastmod}</lastmod><changefreq>{changefreq}</changefreq><priority>{priority}</priority></url>"
+
+    items = "".join(url_xml(u, priority="0.6") for u in static_urls) + \
+            "".join(url_xml(u, priority="0.85") for u in route_urls)
+
     xml = f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{items}</urlset>'
     return Response(content=xml, media_type="application/xml")
-
 @app.get("/manifest.webmanifest", name="manifest")
 def manifest():
     return {
