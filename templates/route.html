@@ -78,12 +78,9 @@
 </section>
 
 {# ===== JSON seguro inyectado por backend ===== #}
-<script id="targets-json" type="application/json">
-  {{ all_targets|tojson }}
-  </script>
-  <script id="map-json" type="application/json">
-  {{ target_to_slug|tojson }}
-  </script>
+<script id="targets-json" type="application/json">{{ all_targets_json | safe }}</script>
+<script id="map-json" type="application/json">{{ target_to_slug_json | safe }}</script>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

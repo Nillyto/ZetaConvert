@@ -240,22 +240,25 @@ async def route_page(request: Request, slug: str):
     page_desc  = f"{route.desc} Convertí {', '.join(route.exts_from or [])} a {', '.join(sorted(all_targets))} en segundos. Rápido, privado y sin registro."
 
     # 🔧 PASAR JSON YA SERIALIZADO
-    all_targets_json = json.dumps(sorted(all_targets))
-    target_to_slug_json = json.dumps(target_to_slug)
+    all_targets_json     = json.dumps(sorted(all_targets))
+    target_to_slug_json  = json.dumps(target_to_slug)
 
     return templates.TemplateResponse(
-        "route.html",
-        {
+    "route.html",
+    {
         "request": request,
         "route": route,
         "routes_list": ROUTES,
+        "all_targets": sorted(all_targets),     # si la querés seguir usando en el <select>
+        "target_to_slug": target_to_slug,       # idem
+        # 👇 estas dos son las nuevas, ya serializadas en Python
         "all_targets_json": all_targets_json,
         "target_to_slug_json": target_to_slug_json,
         "page_title": page_title,
         "page_desc": page_desc,
         "year": time.strftime("%Y"),
-    },
-    )
+    }
+)
 
 
 
