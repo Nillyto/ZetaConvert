@@ -217,3 +217,48 @@ html.dark .badge:hover{border-color:#3a2226;background:rgba(225,25,42,.10)}
   .qi-head{ flex-direction: column; align-items: flex-start; }
   .qi-actions{ width: 100%; }
 }
+/* === Botones personalizados === */
+.btn.download {
+  background: #007bff;      /* azul */
+  color: #fff;
+}
+.btn.download:hover {
+  background: #0056b3;
+}
+
+.select {
+  border: 2px solid #e75480; /* rosa fuerte */
+  border-radius: 10px;
+  padding: 6px 12px;
+}
+.select:focus {
+  border-color: #d63384;
+  box-shadow: 0 0 0 3px rgba(214,51,132,.3);
+}
+
+/* === Dropzone más marcado === */
+.dropzone {
+  border: 3px dashed #e1192a; /* rojo principal más fuerte */
+  border-radius: 16px;
+  padding: 30px;
+  text-align: center;
+  background: rgba(225,25,42,.03);
+  transition: background .2s ease, border-color .2s ease;
+}
+.dropzone:hover, .dropzone.dragover {
+  background: rgba(225,25,42,.06);
+  border-color: #a91320;
+}
+
+/* === Botón de descarga general === */
+#btnDownloadAll {
+  background: #007bff;
+  color: #fff;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 10px 16px;
+  box-shadow: 0 4px 12px rgba(0,123,255,.35);
+}
+#btnDownloadAll:hover {
+  background: #0056b3;
+}
