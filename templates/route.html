@@ -111,7 +111,44 @@ document.addEventListener('DOMContentLoaded', function () {
     <button class="btn primary" type="submit" data-animate="press">Convertir</button>
     <div class="progress mt-2" role="progressbar" aria-label="Progreso"><div class="bar" id="progressBar"></div></div>
   </form>
-
+  <script>
+    (function(){
+      // Datos enviados por backend como strings JSON seguros:
+      const TARGET_TO_SLUG = JSON.parse('{{ target_to_slug_json | e }}');
+      const ALL_TARGETS = JSON.parse('{{ all_targets_json | e }}');
+  
+      // Rellenar el <select id="target">
+      const sel = document.getElementById('target');
+      if (sel && ALL_TARGETS.length) {
+        const currentVal = sel.value?.toLowerCase();
+        sel.innerHTML = "";
+        ALL_TARGETS.forEach(fmt => {
+          const opt = document.createElement('option');
+          opt.value = fmt;
+          opt.textContent = fmt.toUpperCase();
+          sel.appendChild(opt);
+        });
+        // Mantener si existía
+        if (currentVal && ALL_TARGETS.includes(currentVal)) {
+          sel.value = currentVal;
+        }
+      }
+  
+      // Redirección al cambiar de formato: /r/{slug-asociado}
+      // Mantiene el archivo ya cargado? No: es redirección. UX estándar como Convertio.
+      if (sel) {
+        sel.addEventListener('change', (e) => {
+          const fmt = e.target.value.toLowerCase();
+          const slug = TARGET_TO_SLUG[fmt];
+          if (slug) {
+            const base = location.origin;
+            location.href = base + '/r/' + slug;
+          }
+        });
+      }
+    })();
+  </script>
+  
   <details class="expander mt-2">
     <summary>Beneficios</summary>
     <ul class="benefits"><li>Rápido</li><li>Privado</li><li>Gratis</li><li>Compatible</li></ul>

@@ -169,19 +169,39 @@ def get_route(slug: str) -> Optional[Route]:
     return None
 
 # ====== Pages ======
+# === helpers SEO ===
+def abs_url(request: Request, path: str = "/") -> str:
+    base = str(request.base_url).rstrip("/")
+    if not path.startswith("/"):
+        path = "/" + path
+    return base + path
+
 @app.get("/", response_class=HTMLResponse, name="home")
 async def home(request: Request):
     return templates.TemplateResponse(
         "home.html",
-        {"request": request, "year": time.strftime("%Y"), "routes_list": ROUTES}
+        {
+            "request": request,
+            "year": time.strftime("%Y"),
+            "routes_list": ROUTES,
+            "canonical_url": abs_url(request, "/"),
+            "og_image_url": abs_url(request, "/static/og/og-default.png"),
+        }
     )
 
 @app.get("/routes", response_class=HTMLResponse, name="routes")
 async def routes_page(request: Request):
     return templates.TemplateResponse(
         "home.html",
-        {"request": request, "year": time.strftime("%Y"), "routes_list": ROUTES}
+        {
+            "request": request,
+            "year": time.strftime("%Y"),
+            "routes_list": ROUTES,
+            "canonical_url": abs_url(request, "/routes"),
+            "og_image_url": abs_url(request, "/static/og/og-default.png"),
+        }
     )
+
 
 @app.get("/r/{slug}", response_class=HTMLResponse, name="route_page")
 async def route_page(request: Request, slug: str):
@@ -189,7 +209,7 @@ async def route_page(request: Request, slug: str):
     if not route:
         raise HTTPException(404)
 
-    # Relacionadas: comparten input extensions
+    # Relacionadas por input
     from_exts = set(route.exts_from or [])
     related = []
     for r in ROUTES:
@@ -200,37 +220,44 @@ async def route_page(request: Request, slug: str):
         if from_exts.intersection(set(r.exts_from)):
             related.append(r)
 
-    # Unión de todos los targets posibles para este tipo de entrada
+    # Targets posibles (esta ruta + relacionadas)
     all_targets = set(route.to or [])
     for r in related:
         for t in (r.exts_to or []):
             all_targets.add(t)
 
-    # Mapa target->slug (elige el primer conversor que soporte ese target)
+    # target -> slug (prefiere la propia ruta si aplica)
     target_to_slug = {}
-    # Prioridad: la propia ruta si lo soporta
     for t in (route.exts_to or []):
         target_to_slug[t] = route.slug
-    # Luego, rellena con las relacionadas
     for r in related:
         for t in (r.exts_to or []):
             target_to_slug.setdefault(t, r.slug)
 
+    # JSON seguro para incrustar en <script>
+    target_to_slug_json = json.dumps(target_to_slug, ensure_ascii=False)
+    all_targets_json = json.dumps(sorted(all_targets), ensure_ascii=False)
+
     page_title = route.title + " online"
     page_desc  = route.desc + " Gratis y sin registro."
+
     return templates.TemplateResponse(
-    "route.html",
-    {
-        "request": request,
-        "route": route,
-        "routes_list": ROUTES,
-        "all_targets": sorted(all_targets),     # lista de strings (png, jpg, webp, etc.)
-        "target_to_slug": target_to_slug,       # dict: {"png": "jpg-to-png", "webp": "jpg-to-webp", ...}
-        "page_title": page_title,
-        "page_desc": page_desc,
-        "year": time.strftime("%Y"),
-    }
-)
+        "route.html",
+        {
+            "request": request,
+            "route": route,
+            "routes_list": ROUTES,
+            "all_targets": sorted(all_targets),           # para render server-side si querés
+            "target_to_slug_json": target_to_slug_json,   # para JS (sin |tojson)
+            "all_targets_json": all_targets_json,         # para JS
+            "page_title": page_title,
+            "page_desc": page_desc,
+            "canonical_url": abs_url(request, f"/r/{route.slug}"),
+            "og_image_url": abs_url(request, "/static/og/og-default.png"),
+            "year": time.strftime("%Y"),
+        }
+    )
+
 
 
 @app.get("/privacidad", response_class=HTMLResponse, name="privacy")
@@ -332,7 +359,14 @@ async def convert(
 # ====== SEO util ======
 @app.get("/robots.txt", response_class=PlainTextResponse)
 def robots():
-    return "User-agent: *\nAllow: /\nSitemap: https://zetaconvert.online/sitemap.xml\n"
+    return (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /api/\n"
+        "Disallow: /healthz\n"
+        "Sitemap: https://zetaconvert.online/sitemap.xml\n"
+    )
+
 
 @app.get("/ads.txt", name="ads_txt", response_class=PlainTextResponse)
 def ads_txt():

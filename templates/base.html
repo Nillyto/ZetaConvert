@@ -2,18 +2,16 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}ZetaConvert · Conversor de archivos online{% endblock %}</title>
-  <meta name="description" content="{% block meta_desc %}Convierte imágenes y PDFs en segundos. Gratis, simple y privado.{% endblock %}">
-  <link rel="canonical" href="{{ request.url }}">
+<meta name="description" content="{% block meta_desc %}Convierte imágenes, videos, 3D y documentos en segundos. Gratis, simple y privado.{% endblock %}">
+<link rel="canonical" href="{{ canonical_url }}">
+<meta property="og:title" content="{% block og_title %}ZetaConvert · Conversor de archivos{% endblock %}">
+<meta property="og:description" content="{% block og_desc %}Convertí JPG, PNG, PDF, MP4, DOCX y más con un clic.{% endblock %}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="{{ canonical_url }}">
+<meta property="og:image" content="{{ og_image_url }}">
+<meta name="twitter:card" content="summary_large_image">
 
-  <!-- Open Graph / Twitter -->
-  <meta property="og:title" content="{% block og_title %}ZetaConvert · Conversor de archivos{% endblock %}">
-  <meta property="og:description" content="{% block og_desc %}Convertí imágenes y PDFs con un clic.{% endblock %}">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="{{ request.url }}">
-  <meta property="og:image" content="{{ url_for('static', path='icons/icon-512.png') }}">
-  <meta name="twitter:card" content="summary_large_image">
 
   <!-- PWA / Icons -->
   <link rel="icon" sizes="192x192" href="{{ url_for('static', path='icons/icon-192.png') }}">
@@ -76,8 +74,18 @@
   {"@context":"https://schema.org","@type":"WebSite","name":"ZetaConvert","url":"https://zetaconvert.online/","potentialAction":{"@type":"SearchAction","target":"https://zetaconvert.online/?q={q}","query-input":"required name=q"}}
   </script>
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"Organization","name":"ZetaConvert","url":"https://zetaconvert.online/","logo":"https://zetaconvert.online/static/icons/icon-512.png"}
-  </script>
+    {
+      "@context":"https://schema.org",
+      "@type":"Organization",
+      "name":"ZetaConvert",
+      "url":"https://zetaconvert.online/",
+      "logo":"https://zetaconvert.online/static/icons/icon-512.png",
+      "sameAs":[
+        "https://github.com/Nillyto/ZetaConvert"
+      ]
+    }
+    </script>
+    
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"SoftwareApplication","name":"ZetaConvert","applicationCategory":"UtilityApplication","operatingSystem":"Web","url":"https://zetaconvert.online/","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}
   </script>
@@ -132,9 +140,12 @@
   <header class="header">
     <nav class="nav">
       <a class="brand" href="{{ url_for('home') }}" aria-label="ZetaConvert">
-        <img src="{{ url_for('static', path='icons/icon-192.png') }}" alt="" width="28" height="28">
+        <img src="{{ url_for('static', path='icons/icon-192.png') }}"
+             alt="ZetaConvert — Conversor de archivos online"
+             width="28" height="28" loading="eager" fetchpriority="high">
         <span class="brand-name">ZetaConvert</span>
       </a>
+      
       <ul class="nav-links">
         <li><a href="{{ url_for('home') }}">Inicio</a></li>
         <li><a href="{{ url_for('routes') }}">Herramientas</a></li>
