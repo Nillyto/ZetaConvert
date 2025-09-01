@@ -28,6 +28,78 @@ os.makedirs(STORE_DIR, exist_ok=True)
 
 app = FastAPI(title=APP_NAME)
 
+# --- Formatos (mapa + status) ---
+MAP_PATH    = STATIC_DIR / "formats.map.json"
+STATUS_PATH = STATIC_DIR / "formats.status.json"
+
+def _load_json_safe(p: Path, default):
+    try:
+        with p.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return default
+
+def load_format_catalog():
+    """
+    Carga el mapa y el status desde /static/.
+    Devuelve: (ext_to_id, id_to_fmt, enabled_ids)
+    id_to_fmt[fid] => {"id","ext","label","mime","targets":[...], "premium"?}
+    """
+    mp = _load_json_safe(MAP_PATH, {"categories": {}})
+    st = _load_json_safe(STATUS_PATH, {"status": []})
+
+    ext_to_id = {}
+    id_to_fmt = {}
+    for arr in mp.get("categories", {}).values():
+        for f in (arr or []):
+            fid = f.get("id")
+            ext = (f.get("ext") or "").lower()
+            if fid and ext:
+                ext_to_id[ext] = fid
+                id_to_fmt[fid] = f
+
+    enabled_ids = {s["id"] for s in (st.get("status") or []) if s.get("id") and s.get("enabled") is True}
+    return ext_to_id, id_to_fmt, enabled_ids
+
+def is_enabled_ext(ext: str, ext_to_id: dict, enabled_ids: set) -> bool:
+    if not ext:
+        return False
+    fid = ext_to_id.get(ext.lower())
+    return bool(fid and (fid in enabled_ids))
+
+def enabled_targets_for_ext(ext: str, ext_to_id: dict, id_to_fmt: dict, enabled_ids: set) -> list[str]:
+    fid = ext_to_id.get((ext or "").lower())
+    fmt = id_to_fmt.get(fid)
+    if not fmt:
+        return []
+    outs = []
+    for tid in (fmt.get("targets") or []):
+        if tid in enabled_ids:
+            tf = id_to_fmt.get(tid)
+            if tf and tf.get("ext"):
+                outs.append(tf["ext"].lower())
+    return outs
+
+
+@app.get("/formats.map.json", response_class=PlainTextResponse)
+def formats_map_json():
+    data = _load_json_safe(MAP_PATH, {"categories": {}})
+    mt = str(int(MAP_PATH.stat().st_mtime)) if MAP_PATH.exists() else str(int(time.time()))
+    resp = Response(content=json.dumps(data, ensure_ascii=False), media_type="application/json")
+    resp.headers["Cache-Control"] = "public, max-age=300"
+    resp.headers["ETag"] = mt
+    return resp
+
+@app.get("/formats.status.json", response_class=PlainTextResponse)
+def formats_status_json():
+    data = _load_json_safe(STATUS_PATH, {"status": []})
+    mt = str(int(STATUS_PATH.stat().st_mtime)) if STATUS_PATH.exists() else str(int(time.time()))
+    resp = Response(content=json.dumps(data, ensure_ascii=False), media_type="application/json")
+    resp.headers["Cache-Control"] = "public, max-age=120"
+    resp.headers["ETag"] = mt
+    return resp
+
+
 # Static (RUTA ABSOLUTA) y Templates (UNICA instancia) + cache-bust por mtime real
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 templates = Jinja2Templates(directory=str(TEMPL_DIR))
@@ -156,11 +228,38 @@ for r in ROUTES:
 # ====== Dataset para buscador ======
 @app.get("/formats.json")
 def formats_json():
-    return {"items": [
-        {"slug": r.slug, "title": r.title, "desc": r.desc, "category": r.category,
-         "from": r.exts_from, "to": r.exts_to, "keywords": r.keywords, "emoji": r.emoji}
-        for r in ROUTES
-    ]}
+    ext_to_id, id_to_fmt, enabled_ids = load_format_catalog()
+
+    def route_is_viable(r: Route) -> bool:
+        # al menos un origen habilitado
+        if not any(is_enabled_ext(x, ext_to_id, enabled_ids) for x in (r.exts_from or [])):
+            return False
+        # al menos un destino permitido por mapa y habilitado
+        possible = set()
+        for fext in (r.exts_from or []):
+            for tout in enabled_targets_for_ext(fext, ext_to_id, id_to_fmt, enabled_ids):
+                possible.add(tout)
+        if not possible:
+            return False
+        if r.exts_to:
+            return any((t in possible) for t in r.exts_to)
+        return True
+
+    items = []
+    for r in ROUTES:
+        if route_is_viable(r):
+            # Derivo destinos reales para el buscador
+            derived = set()
+            for fext in (r.exts_from or []):
+                for tout in enabled_targets_for_ext(fext, ext_to_id, id_to_fmt, enabled_ids):
+                    derived.add(tout)
+            final_to = [t for t in (r.exts_to or []) if t in derived] if r.exts_to else sorted(derived)
+            items.append({
+                "slug": r.slug, "title": r.title, "desc": r.desc, "category": r.category,
+                "from": r.exts_from, "to": final_to, "keywords": r.keywords, "emoji": r.emoji
+            })
+    return {"items": items}
+
 
 def get_route(slug: str) -> Optional[Route]:
     for r in ROUTES:
@@ -221,44 +320,68 @@ async def route_page(request: Request, slug: str):
         if from_exts.intersection(set(r.exts_from)):
             related.append(r)
 
-    # targets posibles
-    all_targets = set(route.exts_to or route.to or [])
-    for r in related:
-        for t in (r.exts_to or []):
-            all_targets.add(t)
+    # ====== NUEVO: filtrar destinos con mapa + status ======
+    ext_to_id, id_to_fmt, enabled_ids = load_format_catalog()
 
-    # mapa target -> slug
-    target_to_slug = {}
-    for t in (route.exts_to or route.to or []):
-        target_to_slug[t] = route.slug
+    # posibles 'to' a partir de la ruta y relacionadas
+    raw_targets = set(route.exts_to or route.to or [])
     for r in related:
         for t in (r.exts_to or []):
-            target_to_slug.setdefault(t, r.slug)
+            raw_targets.add(t)
+
+    # allowed targets = (targets habilitados por mapa desde los 'from') ∩ raw_targets (si existiera)
+    allowed = set()
+    if route.exts_from:
+        for fext in route.exts_from:
+            if is_enabled_ext(fext, ext_to_id, enabled_ids):
+                for tout in enabled_targets_for_ext(fext, ext_to_id, id_to_fmt, enabled_ids):
+                    allowed.add(tout)
+
+    if raw_targets:
+        allowed = {t for t in allowed if t in raw_targets}
+
+    # fallback: si por algún motivo quedó vacío, mantené al menos los raw habilitados
+    if not allowed:
+        for t in raw_targets:
+            if is_enabled_ext(t, ext_to_id, enabled_ids):
+                allowed.add(t)
+
+    all_targets = sorted(allowed) if allowed else sorted(raw_targets)
+
+    # mapa target -> slug (sólo para los allowed)
+    target_to_slug = {}
+    # la propia ruta toma prioridad para sus 'to'
+    for t in (route.exts_to or route.to or []):
+        if t in all_targets:
+            target_to_slug[t] = route.slug
+    for r in related:
+        for t in (r.exts_to or []):
+            if t in all_targets:
+                target_to_slug.setdefault(t, r.slug)
 
     # SEO
     page_title = f"Convertir {route.title} online gratis"
-    page_desc  = f"{route.desc} Convertí {', '.join(route.exts_from or [])} a {', '.join(sorted(all_targets))} en segundos. Rápido, privado y sin registro."
+    page_desc  = f"{route.desc} Convertí {', '.join(route.exts_from or [])} a {', '.join(all_targets) or 'formatos compatibles'} en segundos. Rápido, privado y sin registro."
 
-    # 🔧 PASAR JSON YA SERIALIZADO
-    all_targets_json     = json.dumps(sorted(all_targets))
-    target_to_slug_json  = json.dumps(target_to_slug)
+    all_targets_json     = json.dumps(all_targets, ensure_ascii=False)
+    target_to_slug_json  = json.dumps(target_to_slug, ensure_ascii=False)
 
     return templates.TemplateResponse(
-    "route.html",
-    {
-        "request": request,
-        "route": route,
-        "routes_list": ROUTES,
-        "all_targets": sorted(all_targets),     # si la querés seguir usando en el <select>
-        "target_to_slug": target_to_slug,       # idem
-        # 👇 estas dos son las nuevas, ya serializadas en Python
-        "all_targets_json": all_targets_json,
-        "target_to_slug_json": target_to_slug_json,
-        "page_title": page_title,
-        "page_desc": page_desc,
-        "year": time.strftime("%Y"),
-    }
-)
+        "route.html",
+        {
+            "request": request,
+            "route": route,
+            "routes_list": ROUTES,
+            "all_targets": all_targets,
+            "target_to_slug": target_to_slug,
+            "all_targets_json": all_targets_json,
+            "target_to_slug_json": target_to_slug_json,
+            "page_title": page_title,
+            "page_desc": page_desc,
+            "year": time.strftime("%Y"),
+        }
+    )
+
 
 
 
