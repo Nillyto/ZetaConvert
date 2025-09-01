@@ -311,3 +311,121 @@
     await Promise.all(Array.from({length: Math.min(pool, pending.length)}, runOne));
   });
 })();
+
+// =====================================================================
+// 4) Filtrado algorítmico de formatos según formats.map.json + formats.status.json
+//     - Aplica a <select id="target"> (form de ruta)
+//     - Aplica a <select id="globalTarget"> (vista cola, si existe)
+//     - Sólo publica opciones habilitadas y válidas según el mapa de targets
+// =====================================================================
+(function(){
+  // Ejecuta sólo si hay al menos uno de los selects objetivo
+  const targetSel = document.getElementById('target');
+  const globalSel = document.getElementById('globalTarget');
+  if (!targetSel && !globalSel) return;
+
+  // Utilidades
+  async function getJSON(url){
+    const r = await fetch(url, {cache:'no-store'});
+    if (!r.ok) throw new Error(url+': '+r.status);
+    return r.json();
+  }
+  function readRouteArray(id){
+    try{ return JSON.parse(document.getElementById(id)?.textContent || '[]'); }catch{ return []; }
+  }
+
+  // Lee datasets de la página (si están presentes)
+  const ROUTE_FROM = readRouteArray('route-from-json'); // ej. ["jpg","png"]
+  const ROUTE_TO   = readRouteArray('route-to-json');   // ej. ["webp","pdf"]
+
+  // Arma estructura desde formats.map.json + formats.status.json
+  (async function init(){
+    let extToId = {}, idToFmt = {}, enabled = new Set();
+    try{
+      const [mapJson, stJson] = await Promise.all([
+        getJSON('/static/formats.map.json'),
+        getJSON('/static/formats.status.json')
+      ]);
+      Object.values(mapJson?.categories || {}).forEach(arr => {
+        arr.forEach(f => {
+          if (f?.ext && f?.id) extToId[f.ext.toLowerCase()] = f.id;
+          if (f?.id) idToFmt[f.id] = f;
+        });
+      });
+      (stJson?.status || []).forEach(s => { if (s?.id && s.enabled === true) enabled.add(s.id); });
+    }catch(e){
+      // Si falla, no filtramos; mantenemos selects como están
+      return;
+    }
+
+    const isEnabledExt = (ext)=>{ const id = extToId[ext?.toLowerCase?.()||'']; return !!(id && enabled.has(id)); };
+    const enabledTargetsForExt = (ext)=>{
+      const id = extToId[ext?.toLowerCase?.()||''];
+      const fmt = id && idToFmt[id];
+      if (!fmt) return [];
+      const outs = [];
+      (fmt.targets||[]).forEach(tid=>{ if (enabled.has(tid)){ const tf = idToFmt[tid]; if (tf?.ext) outs.push(tf.ext.toLowerCase()); } });
+      return outs;
+    };
+
+    function computeAllowed(routeFrom, routeTo, presentValues){
+      const allowedSet = new Set();
+      const hasFrom = Array.isArray(routeFrom) && routeFrom.length>0;
+      const hasTo   = Array.isArray(routeTo)   && routeTo.length>0;
+
+      if (hasFrom){
+        routeFrom.forEach(ext=>{ if (isEnabledExt(ext)) enabledTargetsForExt(ext).forEach(t=>allowedSet.add(t)); });
+      }
+      let allowed = Array.from(allowedSet);
+
+      if (hasTo){
+        const declared = new Set(routeTo.map(x=>x.toLowerCase()));
+        allowed = (allowed.length? allowed : Array.from(declared))
+                    .filter(t=>!allowed.length || allowedSet.has(t));
+      }
+
+      // Si no hubo info de from/to, filtramos por enabled global (entre los que ya están presentes en el select)
+      if (!hasFrom && !hasTo){
+        return presentValues.filter(isEnabledExt);
+      }
+
+      // Siempre filtrar por enabled + que exista en el select
+      const present = new Set(presentValues.map(v=>v.toLowerCase()));
+      return allowed.filter(t=> present.has(t) && isEnabledExt(t));
+    }
+
+    function rebuildSelect(sel){
+      if (!sel) return;
+      // Capturamos opciones actuales (para preservar data-slug y labels)
+      const opts = Array.from(sel.options).map(o=>({
+        value: o.value.toLowerCase(),
+        text:  o.textContent,
+        slug:  o.getAttribute('data-slug')||''
+      }));
+      const presentValues = opts.map(o=>o.value);
+
+      // Si el select es el de la ruta (#target), usamos ROUTE_FROM/ROUTE_TO; si es global, sólo enabled
+      const allowed = sel.id === 'target'
+        ? computeAllowed(ROUTE_FROM, ROUTE_TO, presentValues)
+        : presentValues.filter(isEnabledExt);
+
+      if (!allowed.length) return; // no tocamos si quedaría vacío
+
+      const prev = sel.value && sel.value.toLowerCase();
+      sel.innerHTML = '';
+      allowed.forEach(v=>{
+        const src = opts.find(o=>o.value===v);
+        const opt = document.createElement('option');
+        opt.value = v;
+        opt.textContent = (src?.text || v.toUpperCase());
+        if (src?.slug) opt.setAttribute('data-slug', src.slug);
+        sel.appendChild(opt);
+      });
+      sel.value = allowed.includes(prev) ? prev : allowed[0];
+    }
+
+    rebuildSelect(targetSel);
+    rebuildSelect(globalSel);
+  })();
+})();
+
