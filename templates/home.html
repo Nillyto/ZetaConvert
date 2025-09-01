@@ -145,21 +145,26 @@
     </div>
   </section>
 </section>
+<script>
+  window.ZCFMT = {
+    map: "{{ url_for('static', path='formats.map.json') }}",
+    status: "{{ url_for('static', path='formats.status.json') }}"
+  };
+</script>
 
 <!-- JS: tabs + buscador popover -->
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    // ---------- Helpers ----------
-    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $  = (sel, ctx=document) => ctx.querySelector(sel);
     const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
   
     async function getJSON(url){
-      const r = await fetch(url, {cache:'no-store'});
+      const r = await fetch(url, { cache:'no-store' });
       if (!r.ok) throw new Error(url+' '+r.status);
-      return await r.json();
+      return r.json();
     }
   
-    // ---------- Tabs ----------
+    // Tabs
     const tabs = [...document.querySelectorAll('.cat-tab')];
     const panels = {
       'imagenes': document.getElementById('panel-imagenes'),
@@ -175,26 +180,23 @@
     }
     tabs.forEach(t=>t.addEventListener('click', ()=>show(t.dataset.cat)));
   
-    // ---------- Dataset buscador original (mantengo compat) ----------
-    // Estructura esperada: { items: [{slug,title,desc,category,from:[],to:[],keywords:[]}, ...] }
+    // Dataset buscador (compat backend)
     let routes = [];
     try {
       const j = await getJSON('/formats.json');
       routes = Array.isArray(j?.items) ? j.items : [];
-    } catch(e) { routes = []; }
+    } catch(e) { console.warn('formats.json falló', e); }
   
-    // ---------- Mapa de formatos y estado ----------
-    // Estructura formats.map.json: { version, categories: { cat: [ {id, ext, label, mime, targets: [id..], premium?}, ... ] } }
-    // Estructura formats.status.json: { version, status: [ {id, enabled: true|false}, ... ] }
-    let fmtMap = {};
+    // Carga mapa + status (con fallback a “no filtrar”)
+    let fmtMap = { extToId:{}, idToFmt:{} };
     let enabledSet = new Set();
-    try {
-      const [mapJson, stJson] = await Promise.all([
-        getJSON('/static/formats.map.json'),
-        getJSON('/static/formats.status.json')
-      ]);
+    let filterActive = true;
   
-      // ext -> id y id -> formato
+    try {
+      const mapUrl = (window.ZCFMT?.map)    || '/static/formats.map.json';
+      const stUrl  = (window.ZCFMT?.status) || '/static/formats.status.json';
+      const [mapJson, stJson] = await Promise.all([ getJSON(mapUrl), getJSON(stUrl) ]);
+  
       const extToId = {};
       const idToFmt = {};
       Object.values(mapJson?.categories || {}).forEach(arr => {
@@ -203,25 +205,30 @@
           if (f?.id) idToFmt[f.id] = f;
         });
       });
-  
-      // enabled set
       (stJson?.status || []).forEach(s => { if (s?.id && s.enabled === true) enabledSet.add(s.id); });
   
       fmtMap = { extToId, idToFmt };
-    } catch(e) {
-      // Si fallara algo, dejamos todo vacío y no filtramos agresivo
-      fmtMap = { extToId:{}, idToFmt:{} };
-      enabledSet = new Set();
+  
+      // si no hay NINGUNO habilitado, no ocultamos nada
+      if (enabledSet.size === 0) {
+        console.warn('formats.status.json sin habilitados → no se filtra');
+        filterActive = false;
+      }
+    } catch (e) {
+      console.warn('No se pudo cargar formats.map/status → no se filtra', e);
+      filterActive = false;
     }
   
-    // ---------- Funciones de decisión ----------
-    function isExtEnabled(ext){
+    // Helpers de decisión (respetan filterActive)
+    const isExtEnabled = (ext) => {
+      if (!filterActive) return true;
       const id = fmtMap.extToId[ext?.toLowerCase?.() || ''];
       return !!(id && enabledSet.has(id));
-    }
+    };
+  
     function enabledTargetsFromExt(ext){
-      // devuelve lista de EXT de destino habilitados y que estén en targets del formato origen
-      const id = fmtMap.extToId[ext?.toLowerCase?.() || ''];
+      if (!filterActive) return []; // no se limita en buscador si no hay filtro
+      const id  = fmtMap.extToId[ext?.toLowerCase?.() || ''];
       const fmt = id && fmtMap.idToFmt[id];
       if (!fmt) return [];
       const out = [];
@@ -233,30 +240,25 @@
       });
       return out;
     }
+  
     function routeIsViable(route){
-      // 1) al menos un .from habilitado
+      if (!filterActive) return true;
       const fromOk = (route.from||[]).some(isExtEnabled);
       if (!fromOk) return false;
   
-      // 2) al menos un destino permitido por el mapa y habilitado
-      //    (si route.to está vacío, igual intentamos con targets del mapa)
-      const allPossibleTargets = new Set();
-      (route.from||[]).forEach(ext=>{
-        enabledTargetsFromExt(ext).forEach(t=>allPossibleTargets.add(t));
-      });
-      if (allPossibleTargets.size === 0) return false;
+      const allTargets = new Set();
+      (route.from||[]).forEach(ext=> enabledTargetsFromExt(ext).forEach(t=>allTargets.add(t)));
+      if (allTargets.size === 0) return false;
   
-      if ((route.to||[]).length === 0) return true; // ruta genérica (ej: "convertir imagen")
-      const declaredTo = route.to.map(x=>x.toLowerCase());
-      const hasOverlap = declaredTo.some(t => allPossibleTargets.has(t));
-      return hasOverlap;
+      if ((route.to||[]).length === 0) return true;
+      const declared = route.to.map(x=>x.toLowerCase());
+      return declared.some(t => allTargets.has(t));
     }
+  
     function deriveAllowedTargets(route){
-      // Deriva destinos reales (intersección entre targets del mapa y lo declarado en la ruta, si lo hubiera)
+      if (!filterActive) return route.to || [];
       const allowed = new Set();
-      (route.from||[]).forEach(ext=>{
-        enabledTargetsFromExt(ext).forEach(t=>allowed.add(t));
-      });
+      (route.from||[]).forEach(ext=> enabledTargetsFromExt(ext).forEach(t=>allowed.add(t)));
       const out = Array.from(allowed);
       if ((route.to||[]).length) {
         const declared = new Set(route.to.map(x=>x.toLowerCase()));
@@ -265,11 +267,10 @@
       return out;
     }
   
-    // ---------- Filtrar dataset de buscador ----------
-    const filteredRoutes = routes.filter(route => routeIsViable(route))
-                                 .map(r => ({ ...r, to: deriveAllowedTargets(r) }));
+    // Buscador con filtro
+    const filteredRoutes = (filterActive ? routes.filter(routeIsViable) : routes)
+                            .map(r => ({ ...r, to: deriveAllowedTargets(r) }));
   
-    // ---------- Popover buscador ----------
     const input   = $('#formatSearch');
     const clearBt = $('#clearSearch');
     const pop     = $('#searchPopover');
@@ -308,23 +309,25 @@
     document.addEventListener('click', (e)=>{ if(!e.target.closest('.searchbox')) closePop(); });
     clearBt.addEventListener('click', ()=>{ input.value=''; closePop(); input.focus(); });
   
-    // ---------- Ocultar tarjetas no viables en los paneles ----------
-    // Usamos los data-* agregados en el <a class="card"> para decidir visibilidad
-    $$('.card[data-from]').forEach(card=>{
-      const from = (card.getAttribute('data-from')||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
-      const to   = (card.getAttribute('data-to')  ||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
-      const fakeRoute = { from, to };
-      if (!routeIsViable(fakeRoute)) {
-        // Ocultar la card completa si la ruta no es viable según status+mapa
-        card.style.display = 'none';
-      } else {
-        // Si es viable, actualizo el texto de destinos mostrado (si existiera .badge de “a:”)
-        const allowed = deriveAllowedTargets(fakeRoute);
-        const badgeTo = card.querySelector('.badge:nth-of-type(2)');
-        if (badgeTo && allowed.length) badgeTo.textContent = 'a: ' + allowed.join(', ');
-      }
-    });
+    // Ocultar cards no viables (solo si el filtro está activo)
+    if (filterActive) {
+      $$('.card[data-from]').forEach(card=>{
+        const from = (card.getAttribute('data-from')||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+        const to   = (card.getAttribute('data-to')  ||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+        const fakeRoute = { from, to };
+        if (!routeIsViable(fakeRoute)) {
+          card.style.display = 'none';
+        } else {
+          const allowed = deriveAllowedTargets(fakeRoute);
+          // Actualiza badge “a: …” si existe
+          const badges = card.querySelectorAll('.badge');
+          const badgeTo = badges.length >= 2 ? badges[1] : null;
+          if (badgeTo && allowed.length) badgeTo.textContent = 'a: ' + allowed.join(', ');
+        }
+      });
+    }
   });
   </script>
+  
   
 {% endblock %}

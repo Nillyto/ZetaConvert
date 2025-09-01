@@ -1,0 +1,138 @@
+# ZetaConvert – Organización del Proyecto
+
+Este archivo documenta la organización y funcionamiento del proyecto para poder retomarlo en otro chat o por otra persona en el futuro.
+
+---
+
+## 📂 Estructura mínima de carpetas
+
+```
+project/
+├── main.py                # FastAPI app, rutas, lógica principal
+├── engines/
+│   ├── image_engine.py    # Motor para imágenes (convertir entre JPG, PNG, WEBP, PDF, GIF…)
+│   └── pdf_engine.py      # Motor para PDFs (extraer a imágenes, comprimir, etc.)
+├── static/
+│   ├── css/
+│   │   └── styles.css     # Estilos completos (modo claro/oscuro, colores pastel, grises)
+│   ├── js/
+│   │   └── main.js        # Frontend: drag&drop, colas, redirecciones, barra progreso
+│   ├── formats.map.json   # Catálogo maestro de formatos y targets
+│   ├── formats.status.json# Habilitados o no (enabled true/false)
+│   └── icons/             # Iconos PWA (192, 512)
+├── templates/
+│   ├── base.html          # Layout base con header/footer
+│   ├── home.html          # Página inicial con cards de formatos
+│   ├── route.html         # Página de conversión individual
+│   ├── privacy.html       # Política de privacidad
+│   └── terms.html         # Términos de uso
+└── tmp/                   # Archivos temporales de conversión (se borra al descargar)
+```
+
+---
+
+## 🧩 main.py
+
+- **FastAPI + Starlette**:
+  - Monta `/static` para CSS/JS/JSON.
+  - Usa `templates` con Jinja2 para HTML.
+  - Middleware de seguridad (CORS, headers).
+  - Rate-limit (60/min) y tamaño máx (20MB).
+
+- **Rutas**:
+  - `/` y `/routes`: muestran `home.html`.
+  - `/r/{slug}`: muestra `route.html` para un conversor específico.
+  - `/api/convert`: endpoint de conversión (usa `image_engine` o `pdf_engine`).
+  - SEO: `/sitemap.xml`, `/robots.txt`, `/ads.txt`, `/manifest.webmanifest`.
+  - Salud: `/healthz`.
+
+- **ROUTES**: catálogo hardcodeado de conversores disponibles.
+- **formats.json**: endpoint que devuelve dataset simplificado para buscador.
+
+---
+
+## 🖼 engines/
+
+### image_engine.py
+- Convierte imágenes entre: JPG, PNG, WEBP, PDF.
+- Soporta resize opcional, calidad, strip de metadata.
+- GIF/HEIC/AVIF marcados como premium/futuros.
+
+### pdf_engine.py
+- Convierte PDF a imágenes (PNG/JPG/WEBP).
+- Soporta exportación de páginas específicas.
+- Puede devolver ZIP con todas las páginas.
+
+---
+
+## 🎨 static/
+
+### css/styles.css
+- Paleta clara: blanco base, rojo pastel como secundario, grises/negros terciarios.
+- Paleta oscura: grises más oscuros, rojo brillante/acento.
+- Azul pastel para botones de descarga.
+- Define tokens globales `--primary`, `--accent`, `--bg`, etc.
+- Estilos para header, hero, panels, cards, forms, botones, progreso, tabs, popovers, badges, footer.
+- Responsive (media queries 960px y 560px).
+- Dropzone y cola de archivos.
+
+### js/main.js
+- Theme toggle (dark/light con localStorage).
+- Manejo de formularios de conversión:
+  - drag&drop, paste, precompress (JPEG/WEBP).
+  - submit con XHR + barra progreso.
+- Vista cola multiarchivos:
+  - agregar/quitar archivos.
+  - progreso global.
+  - conversión en paralelo (pool 2).
+- Filtros dinámicos:
+  - carga `formats.map.json` + `formats.status.json`.
+  - reconstruye `<select>` para mostrar solo formatos habilitados.
+
+### formats.map.json
+- Catálogo completo de ~300 formatos organizados por categorías:
+  - `images`, `video`, `audio`, `documents`, `3d`, `utilities`.
+- Cada formato tiene:
+  - `id`, `ext`, `label`, `mime`, `targets`.
+  - `premium: true` si es especial.
+
+### formats.status.json
+- Indica qué formatos están habilitados (`enabled: true/false`).
+- Hoy activos: `jpg`, `png`, `webp`, `pdf`, `zip`.
+- El resto en `false` hasta que haya soporte.
+
+---
+
+## 📑 templates/
+
+- **base.html**: header/nav/footer, bloque hero, bloque content.
+- **home.html**:
+  - Muestra categorías de `ROUTES` como “cards”.
+  - Buscador JS (usa `/formats.json`).
+- **route.html**:
+  - Form de conversión (file input, select de target).
+  - Opciones avanzadas (calidad, resize, dpi, páginas).
+  - JSON inyectado (`all_targets_json`, `target_to_slug_json`) para JS.
+- **privacy.html** y **terms.html**: textos legales.
+
+---
+
+## 🔄 Flujo de uso
+
+1. Usuario entra al **home** → ve cards (`home.html` → `ROUTES`).
+2. Elige un conversor (ej: `/r/jpg-to-png`).
+3. `route.html` muestra el form → selecciona archivo y formato destino.
+4. JS (`main.js`) gestiona drag&drop, envío AJAX, progreso.
+5. Backend (`main.py`) llama `image_engine` o `pdf_engine`.
+6. Devuelve archivo convertido (con headers para descarga).
+7. Descarga automática.
+
+---
+
+## 📌 Nota final
+
+- Para **activar nuevos formatos**, solo hace falta:
+  1. Implementar soporte en `engines/`.
+  2. Crear ruta en `ROUTES` (`main.py`) o endpoint nuevo.
+  3. Poner `enabled: true` en `formats.status.json`.
+
