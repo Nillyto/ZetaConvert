@@ -16,7 +16,7 @@
 {% endblock %}
 
 {% block content %}
-<section class="panel converter">
+<section class="panel converter" data-route-slug="{{ route.slug }}">
   <h2 class="h-title">{{ route.title }}</h2>
   <p class="muted">{{ route.desc }} Gratis y sin registro.</p>
 
@@ -42,6 +42,7 @@
                 data-route-template="{{ url_for('route_page', slug='__SLUG__') }}"
                 data-current-slug="{{ route.slug }}"
                 style="text-transform: uppercase;">
+          {# Fallback SSR: opciones base. El JS luego filtrará según status+mapa #}
           {% for t in all_targets %}
             <option value="{{ t }}"
                     data-slug="{{ target_to_slug.get(t, '') }}"
@@ -74,12 +75,11 @@
 </section>
 
 <div class="actions mt-2">
-  <button id="btnAdd" class="btn">Agregar archivos</button>
-  <button id="btnConvertAll" class="btn primary">Convertir todo</button>
+  <button id="btnAdd" class="btn" type="button">Agregar archivos</button>
+  <button id="btnConvertAll" class="btn primary" type="button">Convertir todo</button>
   <button id="btnClear" class="btn" type="button">Limpiar</button>
   <button id="btnDownloadAll" class="btn download" type="button">Descargar todo</button>
 </div>
-
 
 <section class="panel">
   <h2>Pasos</h2>
@@ -94,60 +94,9 @@
 {# ===== JSON seguro inyectado por backend ===== #}
 <script id="targets-json" type="application/json">{{ all_targets_json | safe }}</script>
 <script id="map-json" type="application/json">{{ target_to_slug_json | safe }}</script>
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-  // llenar el <select id="target"> desde JSON seguro
-  const targetsEl = document.getElementById('targets-json');
-  const mapEl     = document.getElementById('map-json');
-  if (!targetsEl || !mapEl) return;
-
-  let ALL_TARGETS = [];
-  let TARGET_TO_SLUG = {};
-  try {
-    ALL_TARGETS = JSON.parse(targetsEl.textContent || "[]");
-    TARGET_TO_SLUG = JSON.parse(mapEl.textContent || "{}");
-  } catch (e) { console.error('JSON inválido', e); }
-
-  const sel = document.getElementById('target');
-  if (!sel) return;
-
-  // poblar
-  sel.innerHTML = "";
-  ALL_TARGETS.forEach(fmt => {
-    const opt = document.createElement('option');
-    opt.value = fmt;
-    opt.textContent = fmt.toUpperCase();
-    sel.appendChild(opt);
-  });
-
-  // seleccionar por defecto el primero de la ruta actual
-  const defaultTarget = "{{ (route.to[0] if route.to else '') | e }}";
-  if (defaultTarget) {
-    sel.value = defaultTarget;
-  }
-
-  // si el target apunta a otro conversor, redirigir
-  sel.addEventListener('change', () => {
-    const t = sel.value.toLowerCase();
-    const slug = TARGET_TO_SLUG[t];
-    const currentSlug = "{{ route.slug }}";
-    if (slug && slug !== currentSlug) {
-      window.location.assign("{{ url_for('route_page', slug='__SLUG__') }}".replace("__SLUG__", slug));
-    }
-  });
-
-  // combo “Relacionados / Todos los conversores”
-  const switcher = document.getElementById('formatSwitch');
-  if (switcher) {
-    switcher.addEventListener('change', () => {
-      const url = switcher.value;
-      if (url) window.location.assign(url);
-    });
-  }
-});
-</script>
+{# Nuevo: exponer los orígenes/posibles destinos declarados por la ruta (para intersectar con el mapa) #}
+<script id="route-from-json" type="application/json">{{ (route.exts_from or []) | tojson | safe }}</script>
+<script id="route-to-json"   type="application/json">{{ (route.exts_to   or []) | tojson | safe }}</script>
 
 {# HowTo para SEO #}
 <script type="application/ld+json">
@@ -164,24 +113,125 @@ document.addEventListener('DOMContentLoaded', function () {
   ]
 }
 </script>
-{% endblock %}
+
+{# ========= LÓGICA: filtrar <select id=\"target\"> por formats.status.json + formats.map.json ========= #}
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const sel = document.getElementById('target');
-    if (!sel) return;
-  
-    const routeTpl    = sel.getAttribute('data-route-template'); // "/r/__SLUG__"
-    const currentSlug = sel.getAttribute('data-current-slug');
-  
+document.addEventListener('DOMContentLoaded', async () => {
+  const sel = document.getElementById('target');
+  if (!sel) return;
+
+  // --- Dataset que ya tenías (para redirección por slug actual) ---
+  const targetToSlug = (() => {
+    try { return JSON.parse(document.getElementById('map-json')?.textContent || '{}'); }
+    catch { return {}; }
+  })();
+
+  // --- Orígenes/destinos declarados por la ruta (backend) ---
+  const routeFrom = (() => { try { return JSON.parse(document.getElementById('route-from-json')?.textContent || '[]'); } catch { return []; } })();
+  const routeTo   = (() => { try { return JSON.parse(document.getElementById('route-to-json')?.textContent   || '[]'); } catch { return []; } })();
+
+  // --- Cargar mapa y status (desde static/) ---
+  async function getJSON(url){ const r = await fetch(url, {cache:'no-store'}); if(!r.ok) throw new Error(url+' '+r.status); return await r.json(); }
+
+  let extToId = {}, idToFmt = {}, enabledSet = new Set();
+
+  try {
+    const [mapJson, stJson] = await Promise.all([
+      getJSON('/static/formats.map.json'),
+      getJSON('/static/formats.status.json')
+    ]);
+
+    Object.values(mapJson?.categories || {}).forEach(arr => {
+      arr.forEach(f => {
+        if (f?.ext && f?.id) extToId[f.ext.toLowerCase()] = f.id;
+        if (f?.id) idToFmt[f.id] = f;
+      });
+    });
+    (stJson?.status || []).forEach(s => { if (s?.id && s.enabled === true) enabledSet.add(s.id); });
+  } catch(e) {
+    // Si esto falla, no filtramos (quedan las opciones SSR)
+    console.warn('No se pudo cargar formats.map/status:', e);
+    setupRedirectOnly();
+    return;
+  }
+
+  function isEnabledExt(ext){
+    const id = extToId[ext?.toLowerCase?.() || ''];
+    return !!(id && enabledSet.has(id));
+  }
+  function enabledTargetsForExt(ext){
+    const id = extToId[ext?.toLowerCase?.() || ''];
+    const fmt = id && idToFmt[id];
+    if (!fmt) return [];
+    const outs = [];
+    (fmt.targets || []).forEach(tid=>{
+      if (enabledSet.has(tid)) {
+        const tf = idToFmt[tid];
+        if (tf?.ext) outs.push(tf.ext.toLowerCase());
+      }
+    });
+    return outs;
+  }
+
+  // Conjunto de destinos realmente válidos: (targets de mapa habilitados) ∩ (route.to, si fue declarado)
+  const allowedTargets = (() => {
+    const allowed = new Set();
+    // Si la ruta declara exts de origen, usamos sus targets; si no, dejamos pasar los targets globales y se filtra por enabled.
+    if ((routeFrom||[]).length){
+      routeFrom.forEach(fromExt => {
+        if (!isEnabledExt(fromExt)) return;
+        enabledTargetsForExt(fromExt).forEach(t => allowed.add(t));
+      });
+    }
+    // Si la ruta también declara `to`, intersectamos:
+    if ((routeTo||[]).length){
+      const declared = new Set(routeTo.map(x=>x.toLowerCase()));
+      return Array.from(allowed.size ? allowed : declared)
+                  .filter(t => (!allowed.size ? true : allowed.has(t)))
+                  .filter(isEnabledExt);
+    }
+    // Si no hay `to`, devolvemos todos los que salieron del mapa y están habilitados;
+    // si `allowed` quedó vacío (no había from), mantenemos sólo los enabled globales (de las <option>)
+    if (allowed.size) return Array.from(allowed).filter(isEnabledExt);
+
+    // fallback: usar lo que ya está en el select pero filtrado por enabledSet
+    return Array.from(sel.options).map(o=>o.value.toLowerCase()).filter(isEnabledExt);
+  })();
+
+  // Re-renderizar el <select> SOLO con allowedTargets:
+  const currentSlug = sel.getAttribute('data-current-slug');
+  const routeTpl    = sel.getAttribute('data-route-template'); // "/r/__SLUG__"
+  const prevValue   = sel.value && sel.value.toLowerCase();
+
+  sel.innerHTML = '';
+  allowedTargets.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t;
+    opt.textContent = t.toUpperCase();
+    opt.setAttribute('data-slug', (targetToSlug[t] || ''));
+    sel.appendChild(opt);
+  });
+
+  // Selección por defecto:
+  if (prevValue && allowedTargets.includes(prevValue)) {
+    sel.value = prevValue;
+  } else if (allowedTargets.length) {
+    sel.value = allowedTargets[0];
+  }
+
+  // Redirección si el target pertenece a otro conversor
+  setupRedirectOnly();
+
+  function setupRedirectOnly(){
     sel.addEventListener('change', () => {
       const opt  = sel.options[sel.selectedIndex];
-      const slug = opt.getAttribute('data-slug'); // conversor que soporta ese target
+      const slug = opt?.getAttribute('data-slug');
       if (slug && slug !== currentSlug) {
-        // Cambia de herramienta: redireccioná
         window.location.href = routeTpl.replace('__SLUG__', slug);
       }
-      // Si no hay slug diferente, el form actual soporta ese target -> submit normal
+      // si no cambia el slug, submit normal del form actual
     });
-  });
-  </script>
-  
+  }
+});
+</script>
+{% endblock %}
