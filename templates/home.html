@@ -22,11 +22,32 @@
 
     <!-- Tabs categorías -->
     <div class="cat-tabs" role="tablist" aria-label="Categorías">
-      <button class="cat-tab active" data-cat="imagenes" role="tab" aria-selected="true">Imágenes</button>
-      <button class="cat-tab" data-cat="video" role="tab" aria-selected="false">Video</button>
-      <button class="cat-tab" data-cat="3d" role="tab" aria-selected="false">3D</button>
-      <button class="cat-tab" data-cat="documentos" role="tab" aria-selected="false">Documentos</button>
+      <button class="cat-tab active" data-cat="imagenes" role="tab" aria-selected="true">
+        <span>Imágenes</span>
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/ImageLogo.svg') }}');"></span>
+      </button>
+    
+      <button class="cat-tab" data-cat="video" role="tab" aria-selected="false">
+        <span>Video</span>
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/VideoLogo.svg') }}');"></span>
+      </button>
+    
+      <button class="cat-tab" data-cat="3d" role="tab" aria-selected="false">
+        <span>3D</span>
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/3dLogo.svg') }}');"></span>
+      </button>
+    
+      <button class="cat-tab" data-cat="documentos" role="tab" aria-selected="false">
+        <span>Documentos</span>
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/documentLogo.svg') }}');"></span>
+      </button>
     </div>
+    
+    
   </div>
 </section>
 {% endblock %}
@@ -36,9 +57,14 @@
   <!-- Panel: Imágenes -->
   <section class="panel section-accent cat-panel show" id="panel-imagenes" aria-labelledby="tab-imagenes" role="tabpanel">
     <div class="panel-head">
-      <h2>Imágenes</h2>
+      <h2>
+        Imágenes
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/ImageLogo.svg') }}');"></span>
+      </h2>
       <p class="muted">Conversiones más usadas para web y móvil.</p>
     </div>
+    
     <div class="cards">
       {% for r in routes_list if r.category == 'imagenes' %}
       <a class="card"
@@ -64,37 +90,27 @@
   <!-- Panel: Video -->
   <section class="panel section-accent cat-panel" id="panel-video" aria-labelledby="tab-video" role="tabpanel" hidden>
     <div class="panel-head">
-      <h2>Video</h2>
+      <h2>
+        Video
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/VideoLogo.svg') }}');"></span>
+      </h2>
       <p class="muted">Extracción de audio y conversiones compatibles.</p>
     </div>
-    <div class="cards">
-      {% for r in routes_list if r.category == 'video' %}
-      <a class="card"
-   href="{{ url_for('route_page', slug=r.slug) }}"
-   data-slug="{{ r.slug }}"
-   data-cat="{{ r.category }}"
-   data-from="{{ (r.exts_from or [])|join(',') }}"
-   data-to="{{ (r.exts_to or [])|join(',') }}">
-  <strong class="card-title">{{ r.title }}</strong>
-  <p class="muted">{{ r.desc }}</p>
-  {% if r.exts_from or r.exts_to %}
-  <div class="meta">
-    {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
-    {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
-  </div>
-  {% endif %}
-</a>
-
-      {% endfor %}
-    </div>
+    
   </section>
 
   <!-- Panel: 3D -->
   <section class="panel section-accent cat-panel" id="panel-3d" aria-labelledby="tab-3d" role="tabpanel" hidden>
     <div class="panel-head">
-      <h2>3D</h2>
+      <h2>
+        3D
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/3dLogo.svg') }}');"></span>
+      </h2>
       <p class="muted">Conversión de mallas y formatos CAD frecuentes.</p>
     </div>
+    
     <div class="cards">
       {% for r in routes_list if r.category == '3d' %}
       <a class="card"
@@ -120,9 +136,14 @@
   <!-- Panel: Documentos -->
   <section class="panel section-accent cat-panel" id="panel-documentos" aria-labelledby="tab-documentos" role="tabpanel" hidden>
     <div class="panel-head">
-      <h2>Documentos</h2>
+      <h2>
+        Documentos
+        <span class="icon-mask icon-20" aria-hidden="true"
+              style="--icon-url:url('{{ url_for('static', path='icons/documentLogo.svg') }}');"></span>
+      </h2>
       <p class="muted">Herramientas PDF y conversiones Office.</p>
     </div>
+    
     <div class="cards">
       {% for r in routes_list if r.category == 'documentos' %}
       <a class="card"

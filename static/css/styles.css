@@ -1,6 +1,6 @@
 /* =============== ZetaConvert · styles.css =============== */
 /* Paleta clara: blanco primario, rojo pastel secundario, grises/negros terciarios */
-/* Modo oscuro: gris profundo; botón de descarga en azul pastel armonioso           */
+/* Modo oscuro (nuevo): grises profundos con matices, acento rojo suave “agradable” */
 
 /* ------------------ Tokens base (Light) ------------------ */
 :root{
@@ -12,7 +12,7 @@
   --border: #e9eef3;
 
   /* Acentos (rojo pastel) */
-  --accent: #ff6b81;         /* rojo pastel principal */
+  --accent: #ff6b81;
   --accent-600: #ff536d;
   --accent-700: #ff3c5a;
   --accent-50: rgba(255,107,129,.12);
@@ -41,37 +41,46 @@
   --ring: 0 0 0 3px var(--accent-ring);
 }
 
-/* ------------------ Tokens (Dark) ------------------ */
+/* ------------------ Tokens (Dark, estilo chatGPT/gris) ------------------ */
 html.dark{
-  --bg: #121419;
-  --bg-soft: #171b22;
-  --text: #e6e9f0;
-  --muted: #a2a9b7;
-  --border: #2a313c;
+  /* Superficies */
+  --bg: #0f1115;          /* base fondo */
+  --bg-soft: #12151b;     /* superposición suave */
+  --card-bg: #11141a;     /* tarjetas */
+  --panel-bg: #0e1218;    /* paneles/containers */
 
-  /* Acento afinado para dark */
-  --accent: #ff7a8f;
-  --accent-600: #ff627c;
-  --accent-700: #ff4b69;
-  --accent-50: rgba(255,122,143,.14);
-  --accent-ring: rgba(255,122,143,.32);
+  /* Texto y bordes */
+  --text: #e7e9ee;        /* texto principal */
+  --muted: #a8b0bd;       /* texto secundario */
+  --border: #2a2f3a;      /* líneas/bordes (gris-azulado) */
+
+  /* Acento rojo más amable */
+  --accent: #ff5c77;
+  --accent-600: #ff4766;
+  --accent-700: #ff2f54;
+  --accent-50: rgba(255,92,119,.14);
+  --accent-ring: rgba(255,92,119,.32);
 
   --primary: var(--accent);
   --primary-600: var(--accent-600);
   --primary-700: var(--accent-700);
   --primary-50:  var(--accent-50);
 
-  --download: #7ea8ff;
-  --download-600: #5f93ff;
-  --download-ring: rgba(126,168,255,.34);
+  /* Descarga (azul, desaturado para dark) */
+  --download: #7fa5f5;
+  --download-600: #648ff2;
+  --download-ring: rgba(100,143,242,.34);
 
-  --card-bg: #151a22;
-  --panel-bg: #12171f;
-
+  /* Sombras */
   --shadow: 0 10px 28px rgba(0,0,0,.55);
   --shadow-sm: 0 6px 16px rgba(0,0,0,.45);
+
   --ring: 0 0 0 3px var(--accent-ring);
 }
+
+/* Selección de texto (agradable en ambos temas) */
+::selection{ background: var(--accent-600); color: #fff; }
+::-moz-selection{ background: var(--accent-600); color: #fff; }
 
 /* ------------------ Base tipografía/layout ------------------ */
 *{box-sizing:border-box}
@@ -101,7 +110,7 @@ p{margin:.25rem 0 .75rem}
   backdrop-filter:saturate(1.1) blur(10px);
   border-bottom:1px solid var(--border)
 }
-html.dark .header{background:rgba(18,20,25,.75)}
+html.dark .header{background:rgba(16,18,24,.72)}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 20px;max-width:1200px;margin:0 auto}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text)}
 .nav-links{display:flex;align-items:center;gap:14px;list-style:none;margin:0;padding:0}
@@ -128,7 +137,7 @@ main{max-width:1100px;margin:0 auto;padding:0 20px 48px}
   box-shadow:var(--shadow-sm);
   transition:transform .12s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease
 }
-.card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(12,16,24,.14);border-color:rgba(255,107,129,.35)}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(12,16,24,.14);border-color:rgba(255,92,119,.35)}
 .card:focus-visible{outline:none;box-shadow:var(--ring);border-color:var(--accent)}
 
 /* ------------------ Inputs/Botones ------------------ */
@@ -195,32 +204,59 @@ html.dark .progress .bar{background:linear-gradient(90deg,var(--primary),#ff8fa0
 }
 
 /* ------------------ Tabs categorías ------------------ */
-.cat-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
-@media (max-width:960px){.cat-tabs{grid-template-columns:repeat(2,1fr)}}
-@media (max-width:560px){.cat-tabs{grid-template-columns:1fr}}
+.cat-tabs{
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);  /* todos iguales */
+  gap: 12px;
+  margin-top: 16px;
+  max-width: 520px;      /* mismo ancho que el buscador */
+  margin-inline: auto;   /* centrados */
+}
 
 .cat-tab{
-  appearance:none;-webkit-appearance:none;height:44px;border-radius:12px;border:1px solid var(--border);
-  background:linear-gradient(180deg,#fff,#fafbfe);color:var(--text);font:inherit;font-weight:650;cursor:pointer;padding:0 12px;
-  transition:transform .06s ease,box-shadow .2s ease,border-color .2s ease,background .2s ease;outline:none
-}
-html.dark .cat-tab{background:linear-gradient(180deg,#191e26,#151a20)}
-.cat-tab:hover{transform:translateY(-1px);box-shadow:var(--shadow-sm)}
-.cat-tab:focus-visible{box-shadow:var(--ring);border-color:var(--accent)}
-.cat-tab.active{
-  background:linear-gradient(180deg,var(--primary-50),#fff);
-  border-color:rgba(255,107,129,.35);
-  box-shadow:0 8px 24px rgba(255,107,129,.15)
-}
-html.dark .cat-tab.active{
-  background:linear-gradient(180deg,rgba(255,122,143,.10),#161b23);
-  border-color:rgba(255,122,143,.28);
-  box-shadow:0 10px 28px rgba(255,122,143,.18)
+  display: flex;
+  justify-content: space-between; /* texto a la izq, icono a la der */
+  align-items: center;
+  padding: 0 16px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg,#fff,#fafbfe);
+  color: var(--text);
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform .06s ease, box-shadow .2s ease,
+              border-color .2s ease, background .2s ease;
+  outline: none;
 }
 
-.cat-panel{margin-top:16px;opacity:0;transform:translateY(6px);transition:opacity .18s ease,transform .18s ease}
-.cat-panel.show{opacity:1;transform:translateY(0)}
-@media (prefers-reduced-motion:reduce){.cat-tab,.cat-panel{transition:none!important}}
+.cat-tab .icon-mask{
+  flex-shrink: 0;
+  margin-left: 8px;   /* separa texto e icono */
+}
+
+html.dark .cat-tab{ background: linear-gradient(180deg,#272727,#222222); }
+.cat-tab:hover{ transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+.cat-tab:focus-visible{ box-shadow: var(--ring); border-color: var(--accent); }
+
+.cat-tab.active{
+  background: linear-gradient(180deg,var(--primary-50),#fff);
+  border-color: rgba(255,107,129,.35);
+  box-shadow: 0 8px 24px rgba(255,107,129,.15);
+}
+html.dark .cat-tab.active{
+  background: linear-gradient(180deg,rgba(255,122,143,.10),#292929);
+  border-color: rgba(255,122,143,.28);
+  box-shadow: 0 10px 28px rgba(255,122,143,.18);
+}
+
+@media (max-width:720px){
+  .cat-tabs{ grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width:480px){
+  .cat-tabs{ grid-template-columns: 1fr; }
+}
 
 /* ------------------ Buscador + Popover ------------------ */
 .searchbox{position:relative;display:flex;gap:10px;align-items:center}
@@ -234,9 +270,9 @@ html.dark .search-input{background:#0f141b}
 .popover{
   position:absolute;left:0;right:0;top:calc(100% + 8px);
   background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden;
-  box-shadow:0 18px 48px rgba(12,16,24,.22);animation:zc-pop-in .12s ease;z-index:1000
+  box-shadow:0 18px 48px rgba(32, 32, 32, 0.22);animation:zc-pop-in .12s ease;z-index:1000
 }
-html.dark .popover{background:#141923;border-color:#2a313c;box-shadow:0 18px 48px rgba(0,0,0,.6)}
+html.dark .popover{background:#0f141a;border-color:#222935;box-shadow:0 18px 48px rgba(0,0,0,.6)}
 @keyframes zc-pop-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
 
 .popover-list{max-height:340px;overflow:auto;display:flex;flex-direction:column}
@@ -244,11 +280,11 @@ html.dark .popover{background:#141923;border-color:#2a313c;box-shadow:0 18px 48p
   padding:12px 14px;border-bottom:1px solid rgba(17,18,22,.08);
   color:inherit;text-decoration:none;display:block
 }
-.popover-item:hover{background:rgba(255,107,129,.08)}
-html.dark .popover-item{border-bottom:1px solid #202736}
-html.dark .popover-item:hover{background:rgba(255,122,143,.12)}
-.popover-foot{padding:8px 14px;background:rgba(255,107,129,.06);border-top:1px solid var(--border)}
-html.dark .popover-foot{background:#161d27;border-top:1px solid var(--border)}
+.popover-item:hover{background:rgba(255,92,119,.08)}
+html.dark .popover-item{border-bottom:1px solid #1c2230}
+html.dark .popover-item:hover{background:rgba(255,92,119,.10)}
+.popover-foot{padding:8px 14px;background:rgba(255,92,119,.06);border-top:1px solid var(--border)}
+html.dark .popover-foot{background:#0f141a;border-top:1px solid #222935}
 
 /* ------------------ Badges ------------------ */
 .badge{
@@ -256,8 +292,8 @@ html.dark .popover-foot{background:#161d27;border-top:1px solid var(--border)}
   background:var(--bg-soft);border:1px solid var(--border);color:var(--muted);
   transition:border-color .2s ease,background .2s ease
 }
-.badge:hover{border-color:rgba(255,107,129,.35);background:rgba(255,107,129,.06)}
-html.dark .badge:hover{border-color:rgba(255,122,143,.32);background:rgba(255,122,143,.10)}
+.badge:hover{border-color:rgba(255,92,119,.35);background:rgba(255,92,119,.06)}
+html.dark .badge:hover{border-color:rgba(255,92,119,.32);background:rgba(255,92,119,.10)}
 
 /* ------------------ Footer ------------------ */
 .footer{border-top:1px solid var(--border);background:var(--bg)}
@@ -267,14 +303,14 @@ html.dark .badge:hover{border-color:rgba(255,122,143,.32);background:rgba(255,12
 /* ------------------ Cola / Dropzone ------------------ */
 .dropzone{
   border:3px dashed var(--primary);
-  background: rgba(255,107,129,.06);
+  background: rgba(255,92,119,.06);
   border-radius:16px;
   padding:30px;
   text-align:center;
   transition: background .2s ease, border-color .2s ease, box-shadow .2s ease;
 }
 .dropzone:hover,.dropzone.dragover{
-  background: rgba(255,107,129,.10);
+  background: rgba(255,92,119,.10);
   border-color: var(--primary-700);
   box-shadow: var(--ring);
 }
@@ -314,7 +350,8 @@ html.dark .badge:hover{border-color:rgba(255,122,143,.32);background:rgba(255,12
   .header,.footer,.actions,.progress,.expander,.hero,.nav-links{display:none!important}
   main{padding:0}
 }
-/* Buscador en el header */
+
+/* ------------------ Buscador en el header ------------------ */
 .nav { gap: 12px; }
 .nav-search{ position: relative; flex: 1 1 460px; max-width: 520px; }
 .search-input--top{ height: 38px; border-radius: 10px; }
@@ -327,36 +364,49 @@ html.dark .badge:hover{border-color:rgba(255,122,143,.32);background:rgba(255,12
   .nav-links{ order: 2; }
   .actions{ order: 4; }
 }
-/* utilitario de iconos */
-.icon { width: 18px; height: 18px; display: inline-block; vertical-align: -3px; }
-.icon-20 { width:20px; height:20px; }
-.btn .icon { margin-right: 8px; }
 
-/* input con icono */
-.input-icon-wrap { position: relative; }
-.input-icon-wrap .icon-left {
-  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-  pointer-events: none; opacity: .8;
+/* ====== Iconos por máscara (mask + currentColor) ====== */
+.icon-mask{
+  display:inline-block;
+  width: 18px; height: 18px;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-url) no-repeat center / contain;
+  mask: var(--icon-url) no-repeat center / contain;
+  vertical-align: -3px;
 }
-.input-icon { padding-left: 36px; } /* espacio para el icono */
+.icon-20{ width:20px; height:20px; }
+.btn .icon-mask{ margin-right: 8px; }
 
-/* input con icono dentro */
-.input-icon-wrap { position: relative; }
-.input-icon { padding-left: 12px; } /* base */
-.input-icon--right { padding-right: 36px; } /* espacio para icono a la derecha */
+/* Por defecto heredamos el color del texto; en dark lo forzamos a blanco donde convenga */
+.actions .icon-mask,
+.nav-search .icon-mask{ color: var(--text); }
+html.dark .actions .icon-mask,
+html.dark .nav-search .icon-mask{ color: #fff; }
 
-.icon { width: 18px; height: 18px; display: inline-block; }
-.icon-20 { width: 20px; height: 20px; }
+/* ====== Input con icono “dentro” a la derecha ====== */
+.input-icon-wrap{ position: relative; }
+.input-icon{ padding-left: 12px; }           /* base */
+.input-icon--right{ padding-right: 36px; }   /* espacio para el icono */
 
-/* icono a la derecha dentro del input */
-.icon-right {
+.input-icon-right{
   position: absolute;
   right: 10px;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  opacity: .8;
+  opacity: .85;
 }
+
+/* (opcional) si usás icono a la izquierda en otros campos */
+.input-icon-left{
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  opacity: .85;
+}
+.input-with-left{ padding-left: 36px; }
 
 /* (si aún usás icono a la izquierda en otros lugares)
 .icon-left {
@@ -369,3 +419,24 @@ html.dark .badge:hover{border-color:rgba(255,122,143,.32);background:rgba(255,12
 }
 .input-icon { padding-left: 36px; }
 */
+/* Centrar cabeceras de panel + alinear h2 con icono */
+.panel-head{
+  text-align:center;
+}
+.panel-head h2{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;              /* espacio entre texto e icono */
+  margin:0 auto .25rem;  /* centra el bloque y ajusta margen inferior */
+}
+.panel-head p{
+  margin-top: 2px;
+}
+
+/* Si ya tenías margen en el icono, ajustalo para que quede a la DERECHA */
+.panel-head h2 .icon-mask{
+  margin-right: 0;
+  margin-left: 8px;      /* icono a la derecha del texto */
+  vertical-align: -3px;
+}
