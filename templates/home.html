@@ -41,7 +41,13 @@
     </div>
     <div class="cards">
       {% for r in routes_list if r.category == 'imagenes' %}
-      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+      <a class="card"
+   href="{{ url_for('route_page', slug=r.slug) }}"
+   data-slug="{{ r.slug }}"
+   data-cat="{{ r.category }}"
+   data-from="{{ (r.exts_from or [])|join(',') }}"
+   data-to="{{ (r.exts_to or [])|join(',') }}">
+ href="{{ url_for('route_page', slug=r.slug) }}">
         <strong class="card-title">{{ r.title }}</strong>
         <p class="muted">{{ r.desc }}</p>
         {% if r.exts_from or r.exts_to %}
@@ -63,7 +69,13 @@
     </div>
     <div class="cards">
       {% for r in routes_list if r.category == 'video' %}
-      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+      <a class="card"
+   href="{{ url_for('route_page', slug=r.slug) }}"
+   data-slug="{{ r.slug }}"
+   data-cat="{{ r.category }}"
+   data-from="{{ (r.exts_from or [])|join(',') }}"
+   data-to="{{ (r.exts_to or [])|join(',') }}">
+ href="{{ url_for('route_page', slug=r.slug) }}">
         <strong class="card-title">{{ r.title }}</strong>
         <p class="muted">{{ r.desc }}</p>
         {% if r.exts_from or r.exts_to %}
@@ -85,7 +97,13 @@
     </div>
     <div class="cards">
       {% for r in routes_list if r.category == '3d' %}
-      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+      <a class="card"
+   href="{{ url_for('route_page', slug=r.slug) }}"
+   data-slug="{{ r.slug }}"
+   data-cat="{{ r.category }}"
+   data-from="{{ (r.exts_from or [])|join(',') }}"
+   data-to="{{ (r.exts_to or [])|join(',') }}">
+ href="{{ url_for('route_page', slug=r.slug) }}">
         <strong class="card-title">{{ r.title }}</strong>
         <p class="muted">{{ r.desc }}</p>
         {% if r.exts_from or r.exts_to %}
@@ -107,7 +125,13 @@
     </div>
     <div class="cards">
       {% for r in routes_list if r.category == 'documentos' %}
-      <a class="card" href="{{ url_for('route_page', slug=r.slug) }}">
+      <a class="card"
+   href="{{ url_for('route_page', slug=r.slug) }}"
+   data-slug="{{ r.slug }}"
+   data-cat="{{ r.category }}"
+   data-from="{{ (r.exts_from or [])|join(',') }}"
+   data-to="{{ (r.exts_to or [])|join(',') }}">
+ href="{{ url_for('route_page', slug=r.slug) }}">
         <strong class="card-title">{{ r.title }}</strong>
         <p class="muted">{{ r.desc }}</p>
         {% if r.exts_from or r.exts_to %}
@@ -124,70 +148,183 @@
 
 <!-- JS: tabs + buscador popover -->
 <script>
-document.addEventListener('DOMContentLoaded', async () => {
-  // Tabs
-  const tabs = [...document.querySelectorAll('.cat-tab')];
-  const panels = {
-    'imagenes': document.getElementById('panel-imagenes'),
-    'video': document.getElementById('panel-video'),
-    '3d': document.getElementById('panel-3d'),
-    'documentos': document.getElementById('panel-documentos')
-  };
-  function show(cat){
-    tabs.forEach(t=>{ const on = t.dataset.cat===cat; t.classList.toggle('active', on); t.setAttribute('aria-selected', on?'true':'false'); });
-    Object.entries(panels).forEach(([k,el])=>{
-      const on = (k===cat); el.toggleAttribute('hidden', !on); el.classList.toggle('show', on);
-    });
-  }
-  tabs.forEach(t=>t.addEventListener('click', ()=>show(t.dataset.cat)));
-
-  // Dataset buscador
-  let data = [];
-  try {
-    const r = await fetch('/formats.json', {cache:'no-store'}); const j = await r.json();
-    data = (j && j.items) ? j.items : [];
-  } catch(e) {}
-
-  // Popover
-  const input   = document.getElementById('formatSearch');
-  const clearBt = document.getElementById('clearSearch');
-  const pop     = document.getElementById('searchPopover');
-  const list    = document.getElementById('searchList');
-  const count   = document.getElementById('searchCount');
-
-  function closePop(){ pop.hidden = true; pop.setAttribute('aria-expanded','false'); }
-  function openPop(){ pop.hidden = false; pop.setAttribute('aria-expanded','true'); }
-
-  function render(items, q){
-    list.innerHTML = '';
-    count.textContent = items.length ? (items.length + ' resultado' + (items.length>1?'s':'')) : 'Sin resultados';
-    for(const it of items.slice(0, 20)){
-      const a = document.createElement('a');
-      a.className = 'popover-item';
-      a.href = '/r/' + it.slug;
-      const meta = [];
-      if (it.from?.length) meta.push('de: ' + it.from.join(', '));
-      if (it.to?.length) meta.push('a: ' + it.to.join(', '));
-      a.innerHTML = `<div class="pi-title">${it.title}</div><div class="pi-meta">${meta.join(' · ')}</div>`;
-      list.appendChild(a);
+  document.addEventListener('DOMContentLoaded', async () => {
+    // ---------- Helpers ----------
+    const $ = (sel, ctx=document) => ctx.querySelector(sel);
+    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+  
+    async function getJSON(url){
+      const r = await fetch(url, {cache:'no-store'});
+      if (!r.ok) throw new Error(url+' '+r.status);
+      return await r.json();
     }
-  }
-
-  function search(){
-    const q = input.value.trim().toLowerCase();
-    if(!q){ closePop(); return; }
-    const out = data.filter(d=>{
-      const hay = [d.title,d.desc,d.category, ...(d.from||[]), ...(d.to||[]), ...(d.keywords||[])]
-        .join(' ').toLowerCase();
-      return hay.includes(q);
+  
+    // ---------- Tabs ----------
+    const tabs = [...document.querySelectorAll('.cat-tab')];
+    const panels = {
+      'imagenes': document.getElementById('panel-imagenes'),
+      'video': document.getElementById('panel-video'),
+      '3d': document.getElementById('panel-3d'),
+      'documentos': document.getElementById('panel-documentos')
+    };
+    function show(cat){
+      tabs.forEach(t=>{ const on = t.dataset.cat===cat; t.classList.toggle('active', on); t.setAttribute('aria-selected', on?'true':'false'); });
+      Object.entries(panels).forEach(([k,el])=>{
+        const on = (k===cat); el.toggleAttribute('hidden', !on); el.classList.toggle('show', on);
+      });
+    }
+    tabs.forEach(t=>t.addEventListener('click', ()=>show(t.dataset.cat)));
+  
+    // ---------- Dataset buscador original (mantengo compat) ----------
+    // Estructura esperada: { items: [{slug,title,desc,category,from:[],to:[],keywords:[]}, ...] }
+    let routes = [];
+    try {
+      const j = await getJSON('/formats.json');
+      routes = Array.isArray(j?.items) ? j.items : [];
+    } catch(e) { routes = []; }
+  
+    // ---------- Mapa de formatos y estado ----------
+    // Estructura formats.map.json: { version, categories: { cat: [ {id, ext, label, mime, targets: [id..], premium?}, ... ] } }
+    // Estructura formats.status.json: { version, status: [ {id, enabled: true|false}, ... ] }
+    let fmtMap = {};
+    let enabledSet = new Set();
+    try {
+      const [mapJson, stJson] = await Promise.all([
+        getJSON('/static/formats.map.json'),
+        getJSON('/static/formats.status.json')
+      ]);
+  
+      // ext -> id y id -> formato
+      const extToId = {};
+      const idToFmt = {};
+      Object.values(mapJson?.categories || {}).forEach(arr => {
+        arr.forEach(f => {
+          if (f?.ext && f?.id) extToId[f.ext.toLowerCase()] = f.id;
+          if (f?.id) idToFmt[f.id] = f;
+        });
+      });
+  
+      // enabled set
+      (stJson?.status || []).forEach(s => { if (s?.id && s.enabled === true) enabledSet.add(s.id); });
+  
+      fmtMap = { extToId, idToFmt };
+    } catch(e) {
+      // Si fallara algo, dejamos todo vacío y no filtramos agresivo
+      fmtMap = { extToId:{}, idToFmt:{} };
+      enabledSet = new Set();
+    }
+  
+    // ---------- Funciones de decisión ----------
+    function isExtEnabled(ext){
+      const id = fmtMap.extToId[ext?.toLowerCase?.() || ''];
+      return !!(id && enabledSet.has(id));
+    }
+    function enabledTargetsFromExt(ext){
+      // devuelve lista de EXT de destino habilitados y que estén en targets del formato origen
+      const id = fmtMap.extToId[ext?.toLowerCase?.() || ''];
+      const fmt = id && fmtMap.idToFmt[id];
+      if (!fmt) return [];
+      const out = [];
+      (fmt.targets || []).forEach(tid=>{
+        if (enabledSet.has(tid)) {
+          const tf = fmtMap.idToFmt[tid];
+          if (tf?.ext) out.push(tf.ext.toLowerCase());
+        }
+      });
+      return out;
+    }
+    function routeIsViable(route){
+      // 1) al menos un .from habilitado
+      const fromOk = (route.from||[]).some(isExtEnabled);
+      if (!fromOk) return false;
+  
+      // 2) al menos un destino permitido por el mapa y habilitado
+      //    (si route.to está vacío, igual intentamos con targets del mapa)
+      const allPossibleTargets = new Set();
+      (route.from||[]).forEach(ext=>{
+        enabledTargetsFromExt(ext).forEach(t=>allPossibleTargets.add(t));
+      });
+      if (allPossibleTargets.size === 0) return false;
+  
+      if ((route.to||[]).length === 0) return true; // ruta genérica (ej: "convertir imagen")
+      const declaredTo = route.to.map(x=>x.toLowerCase());
+      const hasOverlap = declaredTo.some(t => allPossibleTargets.has(t));
+      return hasOverlap;
+    }
+    function deriveAllowedTargets(route){
+      // Deriva destinos reales (intersección entre targets del mapa y lo declarado en la ruta, si lo hubiera)
+      const allowed = new Set();
+      (route.from||[]).forEach(ext=>{
+        enabledTargetsFromExt(ext).forEach(t=>allowed.add(t));
+      });
+      const out = Array.from(allowed);
+      if ((route.to||[]).length) {
+        const declared = new Set(route.to.map(x=>x.toLowerCase()));
+        return out.filter(t=>declared.has(t));
+      }
+      return out;
+    }
+  
+    // ---------- Filtrar dataset de buscador ----------
+    const filteredRoutes = routes.filter(route => routeIsViable(route))
+                                 .map(r => ({ ...r, to: deriveAllowedTargets(r) }));
+  
+    // ---------- Popover buscador ----------
+    const input   = $('#formatSearch');
+    const clearBt = $('#clearSearch');
+    const pop     = $('#searchPopover');
+    const list    = $('#searchList');
+    const count   = $('#searchCount');
+  
+    function closePop(){ pop.hidden = true; pop.setAttribute('aria-expanded','false'); }
+    function openPop(){ pop.hidden = false; pop.setAttribute('aria-expanded','true'); }
+  
+    function render(items){
+      list.innerHTML = '';
+      count.textContent = items.length ? (items.length + ' resultado' + (items.length>1?'s':'')) : 'Sin resultados';
+      items.slice(0, 20).forEach(it=>{
+        const a = document.createElement('a');
+        a.className = 'popover-item';
+        a.href = '/r/' + it.slug;
+        const meta = [];
+        if (it.from?.length) meta.push('de: ' + it.from.join(', '));
+        if (it.to?.length)   meta.push('a: ' + it.to.join(', '));
+        a.innerHTML = `<div class="pi-title">${it.title}</div><div class="pi-meta">${meta.join(' · ')}</div>`;
+        list.appendChild(a);
+      });
+    }
+  
+    function search(){
+      const q = input.value.trim().toLowerCase();
+      if(!q){ closePop(); return; }
+      const hay = (d)=>[d.title,d.desc,d.category, ...(d.from||[]), ...(d.to||[]), ...(d.keywords||[])]
+                      .join(' ').toLowerCase();
+      const out = filteredRoutes.filter(d=> hay(d).includes(q));
+      render(out); openPop();
+    }
+  
+    input.addEventListener('input', search);
+    input.addEventListener('focus', ()=>{ if(input.value.trim()) openPop(); });
+    document.addEventListener('click', (e)=>{ if(!e.target.closest('.searchbox')) closePop(); });
+    clearBt.addEventListener('click', ()=>{ input.value=''; closePop(); input.focus(); });
+  
+    // ---------- Ocultar tarjetas no viables en los paneles ----------
+    // Usamos los data-* agregados en el <a class="card"> para decidir visibilidad
+    $$('.card[data-from]').forEach(card=>{
+      const from = (card.getAttribute('data-from')||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+      const to   = (card.getAttribute('data-to')  ||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+      const fakeRoute = { from, to };
+      if (!routeIsViable(fakeRoute)) {
+        // Ocultar la card completa si la ruta no es viable según status+mapa
+        card.style.display = 'none';
+      } else {
+        // Si es viable, actualizo el texto de destinos mostrado (si existiera .badge de “a:”)
+        const allowed = deriveAllowedTargets(fakeRoute);
+        const badgeTo = card.querySelector('.badge:nth-of-type(2)');
+        if (badgeTo && allowed.length) badgeTo.textContent = 'a: ' + allowed.join(', ');
+      }
     });
-    render(out, q); openPop();
-  }
-
-  input.addEventListener('input', search);
-  input.addEventListener('focus', ()=>{ if(input.value.trim()) openPop(); });
-  document.addEventListener('click', (e)=>{ if(!e.target.closest('.searchbox')) closePop(); });
-  clearBt.addEventListener('click', ()=>{ input.value=''; closePop(); input.focus(); });
-});
-</script>
+  });
+  </script>
+  
 {% endblock %}

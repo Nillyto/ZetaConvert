@@ -1,0 +1,19 @@
+{
+    "version": 1,
+    "status": [
+      { "id": "f-jpg",  "enabled": false },
+      { "id": "f-png",  "enabled": false },
+      { "id": "f-webp", "enabled": false },
+      { "id": "f-gif",  "enabled": false },
+      { "id": "f-pdf",  "enabled": false },
+      { "id": "f-docx", "enabled": false },
+      { "id": "f-xlsx", "enabled": false },
+      { "id": "f-mp3",  "enabled": false },
+      { "id": "f-wav",  "enabled": false },
+      { "id": "f-mp4",  "enabled": false },
+      { "id": "f-avi",  "enabled": false },
+      { "id": "f-zip",  "enabled": false },
+      { "id": "f-7z",   "enabled": false }
+    ]
+  }
+  

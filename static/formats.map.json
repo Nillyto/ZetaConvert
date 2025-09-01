@@ -1,0 +1,45 @@
+{
+    "version": 1,
+    "categories": {
+      "images": [
+        { "id": "f-jpg", "ext": "jpg", "label": "JPG", "mime": "image/jpeg", "targets": ["f-png","f-webp","f-pdf"] },
+        { "id": "f-png", "ext": "png", "label": "PNG", "mime": "image/png", "targets": ["f-jpg","f-webp","f-pdf"] },
+        { "id": "f-webp", "ext": "webp", "label": "WEBP", "mime": "image/webp", "targets": ["f-jpg","f-png","f-pdf"] },
+        { "id": "f-gif", "ext": "gif", "label": "GIF", "mime": "image/gif", "targets": ["f-mp4","f-png","f-webp"] },
+        { "id": "f-heic", "ext": "heic", "label": "HEIC", "mime": "image/heic", "targets": ["f-jpg","f-png","f-webp"], "premium": true },
+        { "id": "f-avif", "ext": "avif", "label": "AVIF", "mime": "image/avif", "targets": ["f-jpg","f-png","f-webp"], "premium": true }
+      ],
+      "video": [
+        { "id": "f-mp4", "ext": "mp4", "label": "MP4", "mime": "video/mp4", "targets": ["f-avi","f-mkv","f-webm"] },
+        { "id": "f-avi", "ext": "avi", "label": "AVI", "mime": "video/x-msvideo", "targets": ["f-mp4","f-mkv"] },
+        { "id": "f-mkv", "ext": "mkv", "label": "MKV", "mime": "video/x-matroska", "targets": ["f-mp4","f-avi"] },
+        { "id": "f-flv", "ext": "flv", "label": "FLV", "mime": "video/x-flv", "targets": ["f-mp4","f-mkv"], "premium": true }
+      ],
+      "audio": [
+        { "id": "f-mp3", "ext": "mp3", "label": "MP3", "mime": "audio/mpeg", "targets": ["f-wav","f-flac","f-ogg"] },
+        { "id": "f-wav", "ext": "wav", "label": "WAV", "mime": "audio/wav", "targets": ["f-mp3","f-flac","f-ogg"] },
+        { "id": "f-flac", "ext": "flac", "label": "FLAC", "mime": "audio/flac", "targets": ["f-mp3","f-wav"] },
+        { "id": "f-ogg", "ext": "ogg", "label": "OGG", "mime": "audio/ogg", "targets": ["f-mp3","f-wav"] },
+        { "id": "f-aac", "ext": "aac", "label": "AAC", "mime": "audio/aac", "targets": ["f-mp3","f-wav"], "premium": true }
+      ],
+      "documents": [
+        { "id": "f-pdf", "ext": "pdf", "label": "PDF", "mime": "application/pdf", "targets": ["f-docx","f-png","f-jpg"] },
+        { "id": "f-docx", "ext": "docx", "label": "Word DOCX", "mime": "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "targets": ["f-pdf","f-txt"] },
+        { "id": "f-xlsx", "ext": "xlsx", "label": "Excel XLSX", "mime": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "targets": ["f-pdf","f-csv"] },
+        { "id": "f-pptx", "ext": "pptx", "label": "PowerPoint PPTX", "mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation", "targets": ["f-pdf"] },
+        { "id": "f-epub", "ext": "epub", "label": "EPUB", "mime": "application/epub+zip", "targets": ["f-pdf","f-mobi"], "premium": true }
+      ],
+      "3d": [
+        { "id": "f-obj", "ext": "obj", "label": "Wavefront OBJ", "mime": "model/obj", "targets": ["f-stl","f-fbx","f-gltf"] },
+        { "id": "f-stl", "ext": "stl", "label": "STL", "mime": "model/stl", "targets": ["f-obj","f-fbx"] },
+        { "id": "f-fbx", "ext": "fbx", "label": "Autodesk FBX", "mime": "model/fbx", "targets": ["f-obj","f-stl","f-gltf"], "premium": true }
+      ],
+      "utilities": [
+        { "id": "f-zip", "ext": "zip", "label": "ZIP Archive", "mime": "application/zip", "targets": ["f-7z","f-tar","f-rar"] },
+        { "id": "f-7z", "ext": "7z", "label": "7-Zip Archive", "mime": "application/x-7z-compressed", "targets": ["f-zip","f-tar"] },
+        { "id": "f-rar", "ext": "rar", "label": "RAR Archive", "mime": "application/vnd.rar", "targets": ["f-zip","f-7z"], "premium": true },
+        { "id": "f-iso", "ext": "iso", "label": "ISO Disk Image", "mime": "application/x-iso9660-image", "targets": ["f-zip","f-7z"], "premium": true }
+      ]
+    }
+  }
+  
