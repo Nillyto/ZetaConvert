@@ -155,14 +155,19 @@
 <!-- JS: tabs + buscador popover -->
 <script>
   document.addEventListener('DOMContentLoaded', async () => {
-    const $  = (sel, ctx=document) => ctx.querySelector(sel);
-    const $$ = (sel, ctx=document) => Array.from(ctx.querySelectorAll(sel));
+    const $  = (s, c=document) => c.querySelector(s);
+    const $$ = (s, c=document) => Array.from(c.querySelectorAll(s));
+    const bust = () => `?v=${Date.now()}`; // cache-bust simple
   
-    async function getJSON(url){
-      const r = await fetch(url, { cache:'no-store' });
-      if (!r.ok) throw new Error(url+' '+r.status);
-      return r.json();
-    }
+    const fetchFirst = async (urls) => {
+      for (const u of urls) {
+        try {
+          const r = await fetch(u, { cache: 'no-store' });
+          if (r.ok) return r.json();
+        } catch {}
+      }
+      throw new Error('none available: ' + urls.join(', '));
+    };
   
     // Tabs
     const tabs = [...document.querySelectorAll('.cat-tab')];
@@ -173,29 +178,32 @@
       'documentos': document.getElementById('panel-documentos')
     };
     function show(cat){
-      tabs.forEach(t=>{ const on = t.dataset.cat===cat; t.classList.toggle('active', on); t.setAttribute('aria-selected', on?'true':'false'); });
-      Object.entries(panels).forEach(([k,el])=>{
-        const on = (k===cat); el.toggleAttribute('hidden', !on); el.classList.toggle('show', on);
-      });
+      tabs.forEach(t=>{ const on=t.dataset.cat===cat; t.classList.toggle('active', on); t.setAttribute('aria-selected', on?'true':'false'); });
+      Object.entries(panels).forEach(([k,el])=>{ const on=(k===cat); el.toggleAttribute('hidden', !on); el.classList.toggle('show', on); });
     }
     tabs.forEach(t=>t.addEventListener('click', ()=>show(t.dataset.cat)));
   
-    // Dataset buscador (compat backend)
+    // Dataset para buscador (compat backend)
     let routes = [];
     try {
-      const j = await getJSON('/formats.json');
+      const j = await (await fetch('/formats.json' + bust(), {cache:'no-store'})).json();
       routes = Array.isArray(j?.items) ? j.items : [];
-    } catch(e) { console.warn('formats.json falló', e); }
+    } catch (e) { routes = []; }
   
-    // Carga mapa + status (con fallback a “no filtrar”)
+    // Cargar mapa + status con tus nombres
     let fmtMap = { extToId:{}, idToFmt:{} };
     let enabledSet = new Set();
     let filterActive = true;
   
     try {
-      const mapUrl = (window.ZCFMT?.map)    || '/static/formats.map.json';
-      const stUrl  = (window.ZCFMT?.status) || '/static/formats.status.json';
-      const [mapJson, stJson] = await Promise.all([ getJSON(mapUrl), getJSON(stUrl) ]);
+      const mapJson = await fetchFirst([
+        '/static/formatsmap.json' + bust(),
+        '/static/formats.map.json' + bust()   // fallback opcional
+      ]);
+      const stJson  = await fetchFirst([
+        '/static/formatsstatus.json' + bust(),
+        '/static/formats.status.json' + bust() // fallback opcional
+      ]);
   
       const extToId = {};
       const idToFmt = {};
@@ -205,21 +213,26 @@
           if (f?.id) idToFmt[f.id] = f;
         });
       });
+  
+      // Aliases útiles
+      if (extToId['jpg'])  extToId['jpeg'] = extToId['jpg'];
+      if (extToId['tif'])  extToId['tiff'] = extToId['tif'];
+      if (extToId['step']) extToId['stp']  = extToId['step']; // si agregás STEP al mapa
+  
       (stJson?.status || []).forEach(s => { if (s?.id && s.enabled === true) enabledSet.add(s.id); });
   
       fmtMap = { extToId, idToFmt };
   
-      // si no hay NINGUNO habilitado, no ocultamos nada
-      if (enabledSet.size === 0) {
-        console.warn('formats.status.json sin habilitados → no se filtra');
+      if (enabledSet.size === 0 || Object.keys(extToId).length === 0) {
+        console.warn('Sin habilitados o sin mapa → no se filtra');
         filterActive = false;
       }
     } catch (e) {
-      console.warn('No se pudo cargar formats.map/status → no se filtra', e);
+      console.warn('No se pudo cargar mapa/status → no se filtra', e);
       filterActive = false;
     }
   
-    // Helpers de decisión (respetan filterActive)
+    // Helpers
     const isExtEnabled = (ext) => {
       if (!filterActive) return true;
       const id = fmtMap.extToId[ext?.toLowerCase?.() || ''];
@@ -227,7 +240,7 @@
     };
   
     function enabledTargetsFromExt(ext){
-      if (!filterActive) return []; // no se limita en buscador si no hay filtro
+      if (!filterActive) return [];
       const id  = fmtMap.extToId[ext?.toLowerCase?.() || ''];
       const fmt = id && fmtMap.idToFmt[id];
       if (!fmt) return [];
@@ -247,7 +260,7 @@
       if (!fromOk) return false;
   
       const allTargets = new Set();
-      (route.from||[]).forEach(ext=> enabledTargetsFromExt(ext).forEach(t=>allTargets.add(t)));
+      (route.from||[]).forEach(ext => enabledTargetsFromExt(ext).forEach(t => allTargets.add(t)));
       if (allTargets.size === 0) return false;
   
       if ((route.to||[]).length === 0) return true;
@@ -258,7 +271,7 @@
     function deriveAllowedTargets(route){
       if (!filterActive) return route.to || [];
       const allowed = new Set();
-      (route.from||[]).forEach(ext=> enabledTargetsFromExt(ext).forEach(t=>allowed.add(t)));
+      (route.from||[]).forEach(ext => enabledTargetsFromExt(ext).forEach(t => allowed.add(t)));
       const out = Array.from(allowed);
       if ((route.to||[]).length) {
         const declared = new Set(route.to.map(x=>x.toLowerCase()));
@@ -267,10 +280,11 @@
       return out;
     }
   
-    // Buscador con filtro
+    // Buscador (con o sin filtro)
     const filteredRoutes = (filterActive ? routes.filter(routeIsViable) : routes)
                             .map(r => ({ ...r, to: deriveAllowedTargets(r) }));
   
+    // Popover
     const input   = $('#formatSearch');
     const clearBt = $('#clearSearch');
     const pop     = $('#searchPopover');
@@ -309,7 +323,7 @@
     document.addEventListener('click', (e)=>{ if(!e.target.closest('.searchbox')) closePop(); });
     clearBt.addEventListener('click', ()=>{ input.value=''; closePop(); input.focus(); });
   
-    // Ocultar cards no viables (solo si el filtro está activo)
+    // Ocultar cards no viables SÓLO si hay filtro activo
     if (filterActive) {
       $$('.card[data-from]').forEach(card=>{
         const from = (card.getAttribute('data-from')||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
@@ -319,15 +333,19 @@
           card.style.display = 'none';
         } else {
           const allowed = deriveAllowedTargets(fakeRoute);
-          // Actualiza badge “a: …” si existe
           const badges = card.querySelectorAll('.badge');
           const badgeTo = badges.length >= 2 ? badges[1] : null;
           if (badgeTo && allowed.length) badgeTo.textContent = 'a: ' + allowed.join(', ');
         }
       });
     }
+  
+    console.log('[ZC] OK. filterActive:', filterActive, 'habilitados:', enabledSet.size);
   });
   </script>
   
   
+  
+  
 {% endblock %}
+<!-- 18:17 -->
