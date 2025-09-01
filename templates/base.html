@@ -46,13 +46,11 @@
 
   
   <script>
-    (function () {
+    (function(){
       const KEY = 'zc-theme';
       const root = document.documentElement;
       const metaTheme = document.querySelector('meta[name="theme-color"]');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
-    
-      function apply(mode) {
+      function apply(mode){
         if (mode === 'dark') {
           root.classList.add('dark');
           metaTheme && metaTheme.setAttribute('content', '#0f1117');
@@ -60,27 +58,22 @@
           root.classList.remove('dark');
           metaTheme && metaTheme.setAttribute('content', '#e1192a');
         }
+        window.syncThemeIcon && window.syncThemeIcon();
       }
-    
-      // Inicial
-      const stored = localStorage.getItem(KEY);
-      const initial = stored || (prefersDark.matches ? 'dark' : 'light');
-      // Aplicar ANTES de pintar:
-      if (initial === 'dark') root.classList.add('dark');
-      apply(initial);
-    
-      // API global
-      window.ZCTheme = {
-        set(mode) { localStorage.setItem(KEY, mode); apply(mode); },
-        toggle() { this.set(root.classList.contains('dark') ? 'light' : 'dark'); }
-      };
-    
-      // Cambio de sistema si no hay preferencia guardada
-      prefersDark.addEventListener('change', e => {
-        if (!localStorage.getItem(KEY)) apply(e.matches ? 'dark' : 'light');
-      });
+      if (!window.ZCTheme) {
+        window.ZCTheme = {
+          set(mode){ localStorage.setItem(KEY, mode); apply(mode); },
+          toggle(){ this.set(root.classList.contains('dark') ? 'light' : 'dark'); }
+        };
+      }
+      document.getElementById('toggleTheme')?.addEventListener('click', () => window.ZCTheme.toggle());
+      // 🔔 por si el DOM cargó después del head-script
+      window.syncThemeIcon && window.syncThemeIcon();
     })();
-    </script>
+  </script>
+  
+  
+  
     
   
 
@@ -121,12 +114,20 @@
       </a>
 
       <div class="nav-search" role="search">
-        <input id="siteSearchTop" class="search-input search-input--top" type="text"
-               placeholder="Buscar formato o tarea…" aria-label="Buscar formato o tarea" autocomplete="off">
+        <div class="input-icon-wrap">
+          <img class="icon icon-left" src="{{ url_for('static', path='icons/File Search.svg') }}" alt="" aria-hidden="true">
+          <input id="siteSearchTop"
+                 class="search-input search-input--top input-icon"
+                 type="text"
+                 placeholder="Buscar formato o tarea…"
+                 aria-label="Buscar formato o tarea"
+                 autocomplete="off">
+        </div>
         <div id="siteSearchTopPopover" class="popover popover--top" role="listbox" aria-label="Resultados de búsqueda" aria-expanded="false" hidden>
           <div id="siteSearchTopList" class="popover-list"></div>
         </div>
       </div>
+      
       
       <ul class="nav-links">
         <li><a href="{{ url_for('home') }}">Inicio</a></li>
@@ -135,10 +136,16 @@
         <li><a href="{{ url_for('terms') }}">Términos</a></li>
       </ul>
       <div class="actions">
-        <button id="toggleTheme" class="btn compact" type="button" aria-label="Cambiar tema">🌗</button>
-
-
+        <button id="toggleTheme" class="btn compact" type="button" aria-label="Cambiar tema">
+          <img id="themeIcon" class="icon-20" src="{{ url_for('static', path='icons/Moon.svg') }}" alt="Cambiar tema" width="20" height="20">
+        </button>
+        {# Ejemplo futuro: selector de idioma
+        <button class="btn compact" type="button" aria-label="Cambiar idioma" title="Cambiar idioma">
+          <img class="icon-20" src="{{ url_for('static', path='icons/Translate.svg') }}" alt="Idioma" width="20" height="20">
+        </button>
+        #}
       </div>
+      
     </nav>
   </header>
 
