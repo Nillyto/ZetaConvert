@@ -1,19 +1,38 @@
 {
     "version": 1,
     "status": [
-      { "id": "f-jpg",  "enabled": false },
-      { "id": "f-png",  "enabled": false },
-      { "id": "f-webp", "enabled": false },
+      { "id": "f-jpg",  "enabled": true  },
+      { "id": "f-png",  "enabled": true  },
+      { "id": "f-webp", "enabled": true  },
       { "id": "f-gif",  "enabled": false },
-      { "id": "f-pdf",  "enabled": false },
-      { "id": "f-docx", "enabled": false },
-      { "id": "f-xlsx", "enabled": false },
-      { "id": "f-mp3",  "enabled": false },
-      { "id": "f-wav",  "enabled": false },
+      { "id": "f-heic", "enabled": false },
+      { "id": "f-avif", "enabled": false },
+  
       { "id": "f-mp4",  "enabled": false },
       { "id": "f-avi",  "enabled": false },
-      { "id": "f-zip",  "enabled": false },
-      { "id": "f-7z",   "enabled": false }
+      { "id": "f-mkv",  "enabled": false },
+      { "id": "f-flv",  "enabled": false },
+  
+      { "id": "f-mp3",  "enabled": false },
+      { "id": "f-wav",  "enabled": false },
+      { "id": "f-flac", "enabled": false },
+      { "id": "f-ogg",  "enabled": false },
+      { "id": "f-aac",  "enabled": false },
+  
+      { "id": "f-pdf",  "enabled": true  },
+      { "id": "f-docx", "enabled": false },
+      { "id": "f-xlsx", "enabled": false },
+      { "id": "f-pptx", "enabled": false },
+      { "id": "f-epub", "enabled": false },
+  
+      { "id": "f-obj",  "enabled": false },
+      { "id": "f-stl",  "enabled": false },
+      { "id": "f-fbx",  "enabled": false },
+  
+      { "id": "f-zip",  "enabled": true  },
+      { "id": "f-7z",   "enabled": false },
+      { "id": "f-rar",  "enabled": false },
+      { "id": "f-iso",  "enabled": false }
     ]
   }
   
