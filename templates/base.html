@@ -119,6 +119,14 @@
              width="28" height="28" loading="eager" fetchpriority="high">
         <span class="brand-name">ZetaConvert</span>
       </a>
+
+      <div class="nav-search" role="search">
+        <input id="siteSearchTop" class="search-input search-input--top" type="text"
+               placeholder="Buscar formato o tarea…" aria-label="Buscar formato o tarea" autocomplete="off">
+        <div id="siteSearchTopPopover" class="popover popover--top" role="listbox" aria-label="Resultados de búsqueda" aria-expanded="false" hidden>
+          <div id="siteSearchTopList" class="popover-list"></div>
+        </div>
+      </div>
       
       <ul class="nav-links">
         <li><a href="{{ url_for('home') }}">Inicio</a></li>
@@ -127,7 +135,8 @@
         <li><a href="{{ url_for('terms') }}">Términos</a></li>
       </ul>
       <div class="actions">
-        <button id="toggleTheme" class="btn compact" type="button" aria-label="Cambiar tema" onclick="ZCTheme.toggle()">🌗</button>
+        <button id="toggleTheme" class="btn compact" type="button" aria-label="Cambiar tema">🌗</button>
+
 
       </div>
     </nav>
@@ -159,6 +168,101 @@
         if (to) window.location.href = to;
       });
     });
+  </script>
+  <script>
+    (function(){
+      const KEY = 'zc-theme';
+      const root = document.documentElement;
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      function apply(mode){
+        if (mode === 'dark') {
+          root.classList.add('dark');
+          metaTheme && metaTheme.setAttribute('content', '#0f1117');
+        } else {
+          root.classList.remove('dark');
+          metaTheme && metaTheme.setAttribute('content', '#e1192a');
+        }
+      }
+      // Si por lo que sea no existe ZCTheme (falló el script del <head>), lo creo acá:
+      if (!window.ZCTheme) {
+        window.ZCTheme = {
+          set(mode){ localStorage.setItem(KEY, mode); apply(mode); },
+          toggle(){ this.set(root.classList.contains('dark') ? 'light' : 'dark'); }
+        };
+      }
+      // Conectar el botón
+      document.getElementById('toggleTheme')?.addEventListener('click', () => window.ZCTheme.toggle());
+    })();
+  </script>
+  <script>
+    (function(){
+      const $ = (s,c=document)=>c.querySelector(s);
+      const bust = ()=>`?v=${Date.now()}`;
+  
+      const input = $('#siteSearchTop');
+      const pop   = $('#siteSearchTopPopover');
+      const list  = $('#siteSearchTopList');
+      if (!input) return; // por si hay páginas sin header
+  
+      let ROUTES = null;
+      async function loadRoutes(){
+        if (ROUTES) return ROUTES;
+        try{
+          const r = await fetch('/formats.json' + bust(), { cache:'no-store' });
+          const j = await r.json();
+          ROUTES = Array.isArray(j?.items) ? j.items : [];
+        } catch { ROUTES = []; }
+        return ROUTES;
+      }
+  
+      function openPop(){ pop.hidden = false; pop.setAttribute('aria-expanded','true'); }
+      function closePop(){ pop.hidden = true; pop.setAttribute('aria-expanded','false'); }
+  
+      function render(items){
+        list.innerHTML = '';
+        items.slice(0, 12).forEach(it=>{
+          const a = document.createElement('a');
+          a.className = 'popover-item';
+          a.href = '/r/' + it.slug;
+          const meta = [];
+          if (it.from?.length) meta.push('de: ' + it.from.join(', '));
+          if (it.to?.length)   meta.push('a: ' + it.to.join(', '));
+          a.innerHTML = `<div class="pi-title">${it.title}</div>${meta.length?`<div class="pi-meta">${meta.join(' · ')}</div>`:''}`;
+          list.appendChild(a);
+        });
+      }
+  
+      function haystack(d){
+        return [
+          d.title, d.desc, d.category,
+          ...(d.from||[]), ...(d.to||[]), ...(d.keywords||[])
+        ].join(' ').toLowerCase();
+      }
+  
+      async function onType(){
+        const q = input.value.trim().toLowerCase();
+        if (!q){ closePop(); return; }
+        const routes = await loadRoutes();
+        const out = routes.filter(d => haystack(d).includes(q));
+        render(out);
+        openPop();
+      }
+  
+      // Enter -> ir al primer resultado
+      async function onEnter(e){
+        if (e.key !== 'Enter') return;
+        const q = input.value.trim().toLowerCase();
+        if (!q) return;
+        const routes = await loadRoutes();
+        const out = routes.filter(d => haystack(d).includes(q));
+        if (out.length){ window.location.href = '/r/' + out[0].slug; }
+      }
+  
+      input.addEventListener('input', onType);
+      input.addEventListener('keydown', onEnter);
+      input.addEventListener('focus', () => { if(input.value.trim()) openPop(); });
+      document.addEventListener('click', (e)=>{ if(!e.target.closest('.nav-search')) closePop(); });
+    })();
   </script>
   
 </body>

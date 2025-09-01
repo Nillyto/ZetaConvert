@@ -314,3 +314,16 @@ html.dark .badge:hover{border-color:rgba(255,122,143,.32);background:rgba(255,12
   .header,.footer,.actions,.progress,.expander,.hero,.nav-links{display:none!important}
   main{padding:0}
 }
+/* Buscador en el header */
+.nav { gap: 12px; }
+.nav-search{ position: relative; flex: 1 1 460px; max-width: 520px; }
+.search-input--top{ height: 38px; border-radius: 10px; }
+.popover--top{ top: calc(100% + 6px); }
+
+/* Responsive: en móviles el buscador ocupa toda la fila */
+@media (max-width: 960px){
+  .nav{ flex-wrap: wrap; }
+  .nav-search{ order: 3; flex: 1 1 100%; max-width: none; }
+  .nav-links{ order: 2; }
+  .actions{ order: 4; }
+}
