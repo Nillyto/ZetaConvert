@@ -146,32 +146,200 @@
   </section>
 </section>
 <script>
-  window.ZCFMT = {
-    map: "{{ url_for('static', path='formats.map.json') }}",
-    status: "{{ url_for('static', path='formats.status.json') }}"
-  };
-</script>
-<script>
+  // === Helpers globales (fuera de cualquier handler) ===
+  const $  = (s, c=document) => c.querySelector(s);
+  const $$ = (s, c=document) => Array.from(c.querySelectorAll(s));
+  const bust = () => `?v=${Date.now()}`;
+
+  async function getJSON(url){
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error(url + ' ' + r.status);
+    return r.json();
+  }
+
   document.addEventListener('DOMContentLoaded', async () => {
-    const $  = (s, c=document) => c.querySelector(s);
-    const $$ = (s, c=document) => Array.from(c.querySelectorAll(s));
-    const bust = () => `?v=${Date.now()}`;
-  
-    // ⬇️ FALTA ESTA: define getJSON
-    async function getJSON(url){
-      const r = await fetch(url, { cache: 'no-store' });
-      if (!r.ok) throw new Error(url + ' ' + r.status);
-      return r.json();
+    // ---------- Tabs ----------
+    const tabs = [...document.querySelectorAll('.cat-tab')];
+    const panels = {
+      'imagenes': document.getElementById('panel-imagenes'),
+      'video': document.getElementById('panel-video'),
+      '3d': document.getElementById('panel-3d'),
+      'documentos': document.getElementById('panel-documentos')
+    };
+    function show(cat){
+      tabs.forEach(t => {
+        const on = t.dataset.cat === cat;
+        t.classList.toggle('active', on);
+        t.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      Object.entries(panels).forEach(([k, el]) => {
+        const on = (k === cat);
+        el.toggleAttribute('hidden', !on);
+        el.classList.toggle('show', on);
+      });
     }
-  
-    // ... el resto de tu script ...
-    const j = await getJSON('/formats.json' + bust());
-    // ...
-    const mapJson = await getJSON('/static/formats.map.json' + bust());
-    const stJson  = await getJSON('/static/formats.status.json' + bust());
-    // ...
+    tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.cat)));
+
+    // ---------- Dataset para buscador (compat backend) ----------
+    let routes = [];
+    try {
+      const j = await getJSON('/formats.json' + bust());
+      routes = Array.isArray(j?.items) ? j.items : [];
+    } catch {
+      routes = [];
+    }
+
+    // ---------- Cargar mapa + status con tus nombres ----------
+    const mapURL = (window.ZCFMT?.map || '/static/formats.map.json') + bust();
+    const stURL  = (window.ZCFMT?.status || '/static/formats.status.json') + bust();
+
+    let fmtMap = { extToId:{}, idToFmt:{} };
+    let enabledSet = new Set();
+    let filterActive = true;
+
+    try {
+      const [mapJson, stJson] = await Promise.all([ getJSON(mapURL), getJSON(stURL) ]);
+
+      const extToId = {};
+      const idToFmt = {};
+      Object.values(mapJson?.categories || {}).forEach(arr => {
+        arr.forEach(f => {
+          if (f?.ext && f?.id) extToId[f.ext.toLowerCase()] = f.id;
+          if (f?.id) idToFmt[f.id] = f;
+        });
+      });
+
+      // Aliases comunes
+      if (extToId['jpg'])  extToId['jpeg'] = extToId['jpg'];
+      if (extToId['tif'])  extToId['tiff'] = extToId['tif'];
+      if (extToId['step']) extToId['stp']  = extToId['step'];
+
+      (stJson?.status || []).forEach(s => { if (s?.id && s.enabled === true) enabledSet.add(s.id); });
+
+      fmtMap = { extToId, idToFmt };
+
+      if (enabledSet.size === 0 || Object.keys(extToId).length === 0) {
+        console.warn('[ZC] Sin habilitados o sin mapa → no se filtra');
+        filterActive = false;
+      }
+    } catch (e) {
+      console.warn('[ZC] No se pudo cargar mapa/status → no se filtra', e);
+      filterActive = false;
+    }
+
+    // ---------- Lógica de filtrado ----------
+    const isExtEnabled = (ext) => {
+      if (!filterActive) return true;
+      const id = fmtMap.extToId[ext?.toLowerCase?.() || ''];
+      return !!(id && enabledSet.has(id));
+    };
+
+    function enabledTargetsFromExt(ext){
+      if (!filterActive) return [];
+      const id  = fmtMap.extToId[ext?.toLowerCase?.() || ''];
+      const fmt = id && fmtMap.idToFmt[id];
+      if (!fmt) return [];
+      const out = [];
+      (fmt.targets || []).forEach(tid => {
+        if (enabledSet.has(tid)) {
+          const tf = fmtMap.idToFmt[tid];
+          if (tf?.ext) out.push(tf.ext.toLowerCase());
+        }
+      });
+      return out;
+    }
+
+    function routeIsViable(route){
+      if (!filterActive) return true;
+      const fromOk = (route.from || []).some(isExtEnabled);
+      if (!fromOk) return false;
+
+      const allTargets = new Set();
+      (route.from || []).forEach(ext => enabledTargetsFromExt(ext).forEach(t => allTargets.add(t)));
+      if (allTargets.size === 0) return false;
+
+      if ((route.to || []).length === 0) return true;
+      const declared = route.to.map(x => x.toLowerCase());
+      return declared.some(t => allTargets.has(t));
+    }
+
+    function deriveAllowedTargets(route){
+      if (!filterActive) return route.to || [];
+      const allowed = new Set();
+      (route.from || []).forEach(ext => enabledTargetsFromExt(ext).forEach(t => allowed.add(t)));
+      const out = Array.from(allowed);
+      if ((route.to || []).length) {
+        const declared = new Set(route.to.map(x => x.toLowerCase()));
+        return out.filter(t => declared.has(t));
+      }
+      return out;
+    }
+
+    // ---------- Buscador ----------
+    const filteredRoutes = (filterActive ? routes.filter(routeIsViable) : routes)
+                            .map(r => ({ ...r, to: deriveAllowedTargets(r) }));
+
+    const input   = $('#formatSearch');
+    const clearBt = $('#clearSearch');
+    const pop     = $('#searchPopover');
+    const list    = $('#searchList');
+    const count   = $('#searchCount');
+
+    function closePop(){ pop.hidden = true; pop.setAttribute('aria-expanded','false'); }
+    function openPop(){ pop.hidden = false; pop.setAttribute('aria-expanded','true'); }
+
+    function render(items){
+      list.innerHTML = '';
+      count.textContent = items.length ? (items.length + ' resultado' + (items.length>1?'s':'')) : 'Sin resultados';
+      items.slice(0, 20).forEach(it => {
+        const a = document.createElement('a');
+        a.className = 'popover-item';
+        a.href = '/r/' + it.slug;
+        const meta = [];
+        if (it.from?.length) meta.push('de: ' + it.from.join(', '));
+        if (it.to?.length)   meta.push('a: ' + it.to.join(', '));
+        a.innerHTML = `<div class="pi-title">${it.title}</div><div class="pi-meta">${meta.join(' · ')}</div>`;
+        list.appendChild(a);
+      });
+    }
+
+    function search(){
+      const q = input.value.trim().toLowerCase();
+      if(!q){ closePop(); return; }
+      const hay = (d)=>[d.title,d.desc,d.category, ...(d.from||[]), ...(d.to||[]), ...(d.keywords||[])]
+                      .join(' ').toLowerCase();
+      const out = filteredRoutes.filter(d=> hay(d).includes(q));
+      render(out); openPop();
+    }
+
+    input.addEventListener('input', search);
+    input.addEventListener('focus', () => { if(input.value.trim()) openPop(); });
+    document.addEventListener('click', (e) => { if(!e.target.closest('.searchbox')) closePop(); });
+    clearBt.addEventListener('click', () => { input.value=''; closePop(); input.focus(); });
+
+    // ---------- Ocultar cards no viables en los paneles ----------
+    if (filterActive) {
+      $$('.card[data-from]').forEach(card => {
+        const from = (card.getAttribute('data-from')||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+        const to   = (card.getAttribute('data-to')  ||'').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean);
+        const fakeRoute = { from, to };
+        if (!routeIsViable(fakeRoute)) {
+          card.style.display = 'none';
+        } else {
+          const allowed = deriveAllowedTargets(fakeRoute);
+          const badges  = card.querySelectorAll('.badge');
+          const badgeTo = badges.length >= 2 ? badges[1] : null;
+          if (badgeTo && allowed.length) badgeTo.textContent = 'a: ' + allowed.join(', ');
+        }
+      });
+    }
+
+    // Debug opcional
+    window.__ZC = { fmtMap, enabledSet, filterActive, routeIsViable, deriveAllowedTargets };
+    console.log('[ZC] filterActive:', filterActive, 'habilitados:', [...enabledSet]);
   });
-  </script>
+</script>
+
   
 <!-- JS: tabs + buscador popover -->
 <script>
