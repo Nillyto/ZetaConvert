@@ -46,11 +46,22 @@
 
   
   <script>
-    (function(){
+    (function () {
       const KEY = 'zc-theme';
       const root = document.documentElement;
       const metaTheme = document.querySelector('meta[name="theme-color"]');
-      function apply(mode){
+  
+      function syncThemeIcon(){
+        const el = document.getElementById('themeIcon');
+        if (!el) return;
+        const isDark = root.classList.contains('dark');
+        el.src = isDark
+          ? "{{ url_for('static', path='icons/Sun.svg') }}"
+          : "{{ url_for('static', path='icons/Moon.svg') }}";
+        el.alt = isDark ? "Cambiar a tema claro" : "Cambiar a tema oscuro";
+      }
+  
+      function apply(mode) {
         if (mode === 'dark') {
           root.classList.add('dark');
           metaTheme && metaTheme.setAttribute('content', '#0f1117');
@@ -58,19 +69,32 @@
           root.classList.remove('dark');
           metaTheme && metaTheme.setAttribute('content', '#e1192a');
         }
-        window.syncThemeIcon && window.syncThemeIcon();
+        syncThemeIcon(); // actualiza ícono
       }
-      if (!window.ZCTheme) {
-        window.ZCTheme = {
-          set(mode){ localStorage.setItem(KEY, mode); apply(mode); },
-          toggle(){ this.set(root.classList.contains('dark') ? 'light' : 'dark'); }
-        };
-      }
-      document.getElementById('toggleTheme')?.addEventListener('click', () => window.ZCTheme.toggle());
-      // 🔔 por si el DOM cargó después del head-script
-      window.syncThemeIcon && window.syncThemeIcon();
+  
+      // inicial
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+      const stored = localStorage.getItem(KEY);
+      const initial = stored || (prefersDark.matches ? 'dark' : 'light');
+      if (initial === 'dark') root.classList.add('dark'); // antes de pintar
+      apply(initial);
+  
+      // API global
+      window.ZCTheme = {
+        set(mode){ localStorage.setItem(KEY, mode); apply(mode); },
+        toggle(){ this.set(root.classList.contains('dark') ? 'light' : 'dark'); }
+      };
+  
+      // Cambia si el SO cambia (solo si no guardaste preferencia)
+      prefersDark.addEventListener('change', e => {
+        if (!localStorage.getItem(KEY)) apply(e.matches ? 'dark' : 'light');
+      });
+  
+      // Exponer por si hace falta en el footer
+      window.syncThemeIcon = syncThemeIcon;
     })();
   </script>
+  
   
   
   
@@ -115,18 +139,19 @@
 
       <div class="nav-search" role="search">
         <div class="input-icon-wrap">
-          <img class="icon icon-left" src="{{ url_for('static', path='icons/File Search.svg') }}" alt="" aria-hidden="true">
           <input id="siteSearchTop"
-                 class="search-input search-input--top input-icon"
+                 class="search-input search-input--top input-icon input-icon--right"
                  type="text"
                  placeholder="Buscar formato o tarea…"
                  aria-label="Buscar formato o tarea"
                  autocomplete="off">
+          <img class="icon icon-right" src="{{ url_for('static', path='icons/File Search.svg') }}" alt="" aria-hidden="true">
         </div>
         <div id="siteSearchTopPopover" class="popover popover--top" role="listbox" aria-label="Resultados de búsqueda" aria-expanded="false" hidden>
           <div id="siteSearchTopList" class="popover-list"></div>
         </div>
       </div>
+      
       
       
       <ul class="nav-links">
@@ -176,31 +201,13 @@
       });
     });
   </script>
-  <script>
-    (function(){
-      const KEY = 'zc-theme';
-      const root = document.documentElement;
-      const metaTheme = document.querySelector('meta[name="theme-color"]');
-      function apply(mode){
-        if (mode === 'dark') {
-          root.classList.add('dark');
-          metaTheme && metaTheme.setAttribute('content', '#0f1117');
-        } else {
-          root.classList.remove('dark');
-          metaTheme && metaTheme.setAttribute('content', '#e1192a');
-        }
-      }
-      // Si por lo que sea no existe ZCTheme (falló el script del <head>), lo creo acá:
-      if (!window.ZCTheme) {
-        window.ZCTheme = {
-          set(mode){ localStorage.setItem(KEY, mode); apply(mode); },
-          toggle(){ this.set(root.classList.contains('dark') ? 'light' : 'dark'); }
-        };
-      }
-      // Conectar el botón
-      document.getElementById('toggleTheme')?.addEventListener('click', () => window.ZCTheme.toggle());
-    })();
-  </script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('toggleTheme')?.addEventListener('click', () => window.ZCTheme.toggle());
+    window.syncThemeIcon && window.syncThemeIcon(); // ajusta el icono apenas monta
+  });
+</script>
+
   <script>
     (function(){
       const $ = (s,c=document)=>c.querySelector(s);
