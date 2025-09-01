@@ -196,14 +196,9 @@
     let filterActive = true;
   
     try {
-      const mapJson = await fetchFirst([
-        '/static/formatsmap.json' + bust(),
-        '/static/formats.map.json' + bust()   // fallback opcional
-      ]);
-      const stJson  = await fetchFirst([
-        '/static/formatsstatus.json' + bust(),
-        '/static/formats.status.json' + bust() // fallback opcional
-      ]);
+      const mapJson = await getJSON('/static/formats.map.json?v=' + Date.now());
+      const stJson  = await getJSON('/static/formats.status.json?v=' + Date.now());
+
   
       const extToId = {};
       const idToFmt = {};
