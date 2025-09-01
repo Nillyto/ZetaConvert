@@ -47,16 +47,16 @@
    data-cat="{{ r.category }}"
    data-from="{{ (r.exts_from or [])|join(',') }}"
    data-to="{{ (r.exts_to or [])|join(',') }}">
- href="{{ url_for('route_page', slug=r.slug) }}">
-        <strong class="card-title">{{ r.title }}</strong>
-        <p class="muted">{{ r.desc }}</p>
-        {% if r.exts_from or r.exts_to %}
-        <div class="meta">
-          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
-          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
-        </div>
-        {% endif %}
-      </a>
+  <strong class="card-title">{{ r.title }}</strong>
+  <p class="muted">{{ r.desc }}</p>
+  {% if r.exts_from or r.exts_to %}
+  <div class="meta">
+    {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+    {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+  </div>
+  {% endif %}
+</a>
+
       {% endfor %}
     </div>
   </section>
@@ -75,16 +75,16 @@
    data-cat="{{ r.category }}"
    data-from="{{ (r.exts_from or [])|join(',') }}"
    data-to="{{ (r.exts_to or [])|join(',') }}">
- href="{{ url_for('route_page', slug=r.slug) }}">
-        <strong class="card-title">{{ r.title }}</strong>
-        <p class="muted">{{ r.desc }}</p>
-        {% if r.exts_from or r.exts_to %}
-        <div class="meta">
-          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
-          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
-        </div>
-        {% endif %}
-      </a>
+  <strong class="card-title">{{ r.title }}</strong>
+  <p class="muted">{{ r.desc }}</p>
+  {% if r.exts_from or r.exts_to %}
+  <div class="meta">
+    {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+    {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+  </div>
+  {% endif %}
+</a>
+
       {% endfor %}
     </div>
   </section>
@@ -103,16 +103,16 @@
    data-cat="{{ r.category }}"
    data-from="{{ (r.exts_from or [])|join(',') }}"
    data-to="{{ (r.exts_to or [])|join(',') }}">
- href="{{ url_for('route_page', slug=r.slug) }}">
-        <strong class="card-title">{{ r.title }}</strong>
-        <p class="muted">{{ r.desc }}</p>
-        {% if r.exts_from or r.exts_to %}
-        <div class="meta">
-          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
-          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
-        </div>
-        {% endif %}
-      </a>
+  <strong class="card-title">{{ r.title }}</strong>
+  <p class="muted">{{ r.desc }}</p>
+  {% if r.exts_from or r.exts_to %}
+  <div class="meta">
+    {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+    {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+  </div>
+  {% endif %}
+</a>
+
       {% endfor %}
     </div>
   </section>
@@ -131,16 +131,16 @@
    data-cat="{{ r.category }}"
    data-from="{{ (r.exts_from or [])|join(',') }}"
    data-to="{{ (r.exts_to or [])|join(',') }}">
- href="{{ url_for('route_page', slug=r.slug) }}">
-        <strong class="card-title">{{ r.title }}</strong>
-        <p class="muted">{{ r.desc }}</p>
-        {% if r.exts_from or r.exts_to %}
-        <div class="meta">
-          {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
-          {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
-        </div>
-        {% endif %}
-      </a>
+  <strong class="card-title">{{ r.title }}</strong>
+  <p class="muted">{{ r.desc }}</p>
+  {% if r.exts_from or r.exts_to %}
+  <div class="meta">
+    {% if r.exts_from %}<span class="badge">de: {{ ', '.join(r.exts_from) }}</span>{% endif %}
+    {% if r.exts_to %}<span class="badge">a: {{ ', '.join(r.exts_to) }}</span>{% endif %}
+  </div>
+  {% endif %}
+</a>
+
       {% endfor %}
     </div>
   </section>
