@@ -1,0 +1,379 @@
+project/
+├── main.py                  # FastAPI app, rutas, lógica principal
+├── engines/
+│   ├── image_engine.py      # Motor imágenes (JPG, PNG, WEBP, PDF, GIF…)
+│   └── pdf_engine.py        # Motor PDFs (páginas a imagen, comprimir, split/merge futuro)
+├── static/
+│   ├── css/
+│   │   └── styles.css       # Estilos (modo claro/oscuro, tokens, componentes, dropzone/cola)
+│   ├── js/
+│   │   └── main.js          # Frontend: DnD, colas, progreso, filtros dinámicos
+│   ├── formats.map.json     # Catálogo maestro de formatos y targets
+│   ├── formats.status.json  # Habilitados o no (enabled true/false)
+│   └── icons/               # PWA e íconos UI (192, 512, SVGs)
+├── templates/
+│   ├── base.html            # Layout base con header/footer + theme
+│   ├── home.html            # Página inicial (buscador, tabs, cards)
+│   ├── route.html           # Convertidor individual (dropzone + cola multiarchivo)
+│   ├── privacy.html         # Política de privacidad
+│   └── terms.html           # Términos de uso
+├── tmp/                     # Archivos temporales de conversión (se borra al descargar/cron)
+├── tests/                   # Tests unitarios y de API (pytest)
+└── .github/workflows/       # CI (lint, tests, build)
+
+
+🧩 main.py (resumen técnico)
+
+FastAPI con middleware:
+
+CORS (según ALLOWED_ORIGINS)
+
+Limite de tamaño (revisar content-length y validar manualmente)
+
+Rate limit simple por IP (depende de lib que uses o MemoryStore propio)
+
+Static: montado en /static + endpoints SEO (/sitemap.xml, /robots.txt, /ads.txt, /manifest.webmanifest)
+
+Templates con Jinja2.
+
+Rutas:
+
+GET / → home.html
+
+GET /routes → listado de ROUTES
+
+GET /r/{slug} → route.html (inyecta all_targets_json, target_to_slug_json, route.exts_from, route.exts_to)
+
+GET /formats.json → dataset simple para buscador { items: [...] }
+
+POST /api/convert → conversión (multipart/form-data)
+
+GET /healthz → 200 OK
+
+ROUTES: catálogo server-side para páginas de conversión (cada una con slug, title, desc, category, exts_from, exts_to, accept, multi).
+
+🔌 Contrato de la API
+POST /api/convert
+
+Request (multipart/form-data)
+
+route: string (slug de la ruta actual, p. ej. jpg-to-png)
+
+target: string (ext destino; p. ej. png)
+
+file o files[]: file (uno o varios si la ruta admite multi)
+
+Opcionales (según motores)
+
+quality (int 50–100) — compresión JPG/WEBP
+
+dpi (int 72–300) — raster PDF→imagen
+
+pages (string) — rango tipo 1-3,5
+
+resize_w/resize_h (int) — si >0 se aplica resize
+
+stripmeta (bool 0/1) — quitar metadatos
+
+Response
+
+200 OK con Content-Type dinámico (image/png, application/pdf, application/zip, …)
+
+Content-Disposition: attachment; filename="nombre_salida.ext"
+
+Cuerpo: archivo convertido (blob)
+
+Errores
+
+400 parámetros inválidos (json {"error":"...","code":"BAD_REQUEST"})
+
+413 archivo demasiado grande
+
+415 formato no soportado
+
+429 rate limit
+
+500 error interno
+
+Nota: Para multi-página (PDF→imágenes múltiples), devolver ZIP. Para multi-archivo input → ZIP consolidado.
+
+📘 Esquemas de datos (JSON)
+static/formats.map.json (catálogo maestro)
+{
+  "categories": {
+    "images": [
+      { "id": "fmt_jpg", "ext": "jpg", "label": "JPEG", "mime": "image/jpeg", "targets": ["fmt_png","fmt_webp"], "premium": false },
+      { "id": "fmt_png", "ext": "png", "label": "PNG",  "mime": "image/png",  "targets": ["fmt_jpg","fmt_webp"] }
+    ],
+    "documents": [
+      { "id": "fmt_pdf", "ext": "pdf", "label": "PDF", "mime": "application/pdf", "targets": ["fmt_png","fmt_jpg","fmt_webp","fmt_zip"] }
+    ]
+  }
+}
+
+static/formats.status.json (habilitados)
+{
+  "status": [
+    { "id": "fmt_jpg", "enabled": true },
+    { "id": "fmt_png", "enabled": true },
+    { "id": "fmt_webp","enabled": true },
+    { "id": "fmt_pdf", "enabled": true },
+    { "id": "fmt_zip", "enabled": true }
+  ]
+}
+
+GET /formats.json (para buscador)
+{
+  "items": [
+    {
+      "slug": "jpg-to-png",
+      "title": "JPG a PNG",
+      "desc": "Convierte fotos JPG a PNG sin pérdida",
+      "category": "imagenes",
+      "from": ["jpg"],
+      "to": ["png","webp"],
+      "keywords": ["foto","transparencia","raster"]
+    }
+  ]
+}
+
+🖼 engines/
+image_engine.py
+
+Entradas: PIL.Image / bytes.
+
+Operaciones:
+
+Convertir entre JPG/PNG/WEBP.
+
+quality (JPG/WEBP), stripmeta, resize.
+
+Exportar a PDF (single-image PDF) si lo activás.
+
+Salida: bytes + mime + filename.
+
+pdf_engine.py
+
+Entradas: bytes PDF.
+
+Operaciones:
+
+Raster a PNG/JPG/WEBP con dpi y pages.
+
+Si varias páginas → ZIP (mantener orden).
+
+Salida: bytes + mime + filename (o zip).
+
+Contrato interno (retorno típico):
+
+return {
+  "content": bytes_data,
+  "mime": "image/png",
+  "filename": suggested_name  # ej: base + ".png" / ".zip"
+}
+
+🎨 Frontend (resumen)
+
+Tema: window.ZCTheme maneja light/dark con localStorage. Íconos SVG se vuelven blancos en dark usando mask-image + currentColor.
+
+Buscador (home + header): carga formats.json (sin cache), filtra y navega.
+
+Tabs: imagenes/video/3d/documentos con ARIA.
+
+Dropzone + cola (route):
+
+DnD y file picker.
+
+Lista de items con: nombre, tamaño, select target por ítem, progreso interno, descarga por ítem.
+
+Panel general con formato global, Convertir todo, Descargar todo (se habilita cuando todos terminaron).
+
+XMLHttpRequest para progreso (upload) + finalización (100%).
+
+Redirección por slug si el target pertenece a otro conversor.
+
+🔒 Seguridad
+
+Validación de extensión y MIME en backend (no te fíes del frontend).
+
+Límites:
+
+Tamaño total por request (p. ej. 20 MB) → 413.
+
+Cantidad de archivos (p. ej. 25) → 400.
+
+Sandbox: no ejecutes binarios peligrosos sin aislamiento.
+
+Limpiar tmp/ tras entregar el archivo (o CRON cada N minutos).
+
+Rate-limit IP → 429.
+
+CORS: restringir dominios en prod.
+
+Headers: X-Content-Type-Options: nosniff, Content-Security-Policy básica (sin unsafe-inline si es posible).
+
+PDF: si usas renderizadores, evitar ejecución de JS embebido en PDF (usar raster seguro).
+
+🧪 Tests
+
+Unitarios (tests/engines_test.py):
+
+image_engine: convierte JPG→PNG/WEBP, respeta quality, resize, stripmeta.
+
+pdf_engine: PDF→PNG (páginas y DPI), ZIP múltiple.
+
+API (tests/api_test.py):
+
+POST /api/convert happy path y errores (415, 413, 400).
+
+Nombre de archivo por Content-Disposition.
+
+Frontend (opc.): Playwright para DnD + progreso visible + descarga habilitada.
+
+Ejecutar:
+
+pytest -q
+
+🤖 CI/CD (sugerido)
+
+GitHub Actions:
+
+Job 1: Lint (ruff/flake8), black --check, isort --check.
+
+Job 2: Tests (pytest).
+
+Job 3: Build Docker (si aplica) y push a registry.
+
+Deploy:
+
+Contenedor con uvicorn detrás de nginx (sirve estáticos con caché agresiva y ?v=).
+
+Healthcheck GET /healthz.
+
+📈 Observabilidad
+
+Logging estructurado (json) en main.py.
+Campos: request_id, ip, route, target, size, status, elapsed_ms, error_code.
+
+Métricas (opc.): Prometheus (/metrics) con:
+
+convert_requests_total{route,target,status}
+
+convert_latency_ms_bucket
+
+bytes_in_total, bytes_out_total
+
+Sentry o similar para excepciones.
+
+♿ Accesibilidad
+
+Controles con aria-label, role="listbox", aria-expanded.
+
+Dropzone con tabindex="0" y disparar click al Enter/Espacio.
+
+Contraste alto en dark (tokens ajustados).
+
+skip-link al <main>.
+
+Focus visible (usa --ring).
+
+🔍 SEO
+
+title, meta description, Open Graph, Twitter cards.
+
+canonical, sitemap.xml, robots.txt.
+
+HowTo JSON-LD en route.html.
+
+Performance: preconnect a fonts, fetchpriority="high" para logo, defer/async en JS, ?v= para cache-busting.
+
+🌐 i18n (opcional)
+
+lang="es" en <html>.
+
+Preparar alias es, en con bloques Jinja si se requiere (no implementado aún).
+
+🧭 Convenciones / estilo
+
+Python: snake_case, tipado opcional, docstrings.
+
+JS: módulos simples IIFE, const/let, helpers $, $$.
+
+CSS: tokens en :root y html.dark; componentes con prefijos (.dz-, .qi-).
+
+Nombres de rutas: from-to (p. ej. jpg-to-png).
+
+Extensiones en minúscula; target siempre lowercase en backend.
+
+🧹 Limpieza de temporales
+
+Inmediata: al responder con StreamingResponse, borrar archivo temporal tras finalizar.
+
+CRON: script que borra en tmp/ todo > N minutos.
+
+Evitar colisiones de nombres (usa UUID).
+
+🗺️ Roadmap corto
+
+ ZIP de “Descargar todo” en cliente (JSZip) o servidor.
+
+ Soporte HEIC/AVIF (lib extra).
+
+ “Combinar PDF” + “Dividir PDF”.
+
+ Lote paralelo con pool configurable (hoy XHR por ítem).
+
+ Persistir cola si recarga la página (IndexedDB).
+
+ Modo “público/privado” de logs con anonimización.
+
+✅ Checklist de entrega
+
+Backend
+
+ POST /api/convert valida route + target contra formats.map.json + formats.status.json.
+
+ Límite de tamaño y tipo MIME.
+
+ Content-Disposition con nombre coherente.
+
+ Limpieza de tmp/.
+
+Frontend
+
+ Dropzone clara (rojo pastel), CTA “Soltá/tocá”.
+
+ Cola: nombre, tamaño, target por archivo, progreso, descarga.
+
+ Panel general: target global, Convertir todo, Descargar todo (solo cuando todos done).
+
+ Redirección por slug si cambia de conversor.
+
+Ops
+
+ CI: lint + tests verdes.
+
+ Deploy con caché estáticos + ?v=STYLE_VERSION.
+
+ Logs útiles + healthcheck.
+
+📎 Ejemplos de respuesta de conversión
+
+Single salida (PNG)
+
+HTTP/1.1 200 OK
+Content-Type: image/png
+Content-Disposition: attachment; filename="foto.png"
+Cache-Control: no-store
+
+
+<binary>
+
+Múltiples salidas (ZIP)
+
+HTTP/1.1 200 OK
+Content-Type: application/zip
+Content-Disposition: attachment; filename="documento_paginas.zip"
+
+
+<binary>

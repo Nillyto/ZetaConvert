@@ -121,36 +121,37 @@
 })();
 
 // =====================================================================
-// 3) Vista "cola" (multi-archivos) con #globalTarget y redirección similar
+// 3) Vista "cola" (multi-archivos) usando los IDs del HTML actual
 // =====================================================================
 (function(){
   // ---------- Utilidades ----------
   const $ = sel => document.querySelector(sel);
   const el = (tag, attrs={}, ...children) => {
     const n = document.createElement(tag);
-    Object.entries(attrs).forEach(([k,v]) => {
+    for (const [k,v] of Object.entries(attrs)) {
       if (k === 'class') n.className = v;
       else if (k === 'style') n.style.cssText = v;
       else if (k.startsWith('on') && typeof v === 'function') n.addEventListener(k.slice(2), v);
       else n.setAttribute(k, v);
-    });
+    }
     children.forEach(c => n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c));
     return n;
   };
   const fmtBytes = b => (b>=1e6? (b/1e6).toFixed(1)+' MB' : (b/1e3).toFixed(1)+' KB');
 
-  // ---------- Elementos ----------
-  const dropZone      = $('#dropZone');
+  // ---------- Elementos (IDs reales del HTML) ----------
+  const dropZone      = $('#dz');
   const fileInput     = $('#fileInput');
-  const queueWrap     = $('#fileQueue');
-  const btnAdd        = $('#btnAdd');
-  const btnClear      = $('#btnClear');
-  const btnConvertAll = $('#btnConvertAll');
-  const overallBar    = $('#overallBar');
-  const globalTarget  = $('#globalTarget'); // <select> ya renderizado por el template (con data-slug por <option>)
+  const queueWrap     = $('#queue');
+  const btnAdd        = $('#btnAdd');          // (si lo eliminaste abajo, puede ser null)
+  const btnClear      = $('#btnClear');        // (si lo eliminaste abajo, puede ser null)
+  const btnConvertAll = $('#btnConvertAll');   // del panel general (arriba a la derecha)
+  const btnDownloadAll= $('#btnDownloadAll');  // del panel general (arriba a la derecha)
+  const globalTarget  = $('#targetGlobal');    // tu select global
+  const routeHidden   = document.querySelector('input[name="route"]'); // agregado en el HTML
 
   // Si no existe la UI de cola, no continuar.
-  if (!dropZone || !queueWrap) return;
+  if (!dropZone || !fileInput || !queueWrap) return;
 
   // ---------- Redirección al cambiar formato global ----------
   (function setupFormatRedirect(){
@@ -161,28 +162,26 @@
       const opt  = this.options[this.selectedIndex];
       const slug = opt?.getAttribute('data-slug');
       if (slug && slug !== currentSlug) {
-        const next = routeTpl.replace('__SLUG__', slug);
-        window.location.href = next;
+        window.location.href = routeTpl.replace('__SLUG__', slug);
       }
     });
   })();
 
   // ---------- Estado de la cola ----------
-  const LIMIT = 5;
-  const state = { items: [] }; // {id, file, size, name, targetOverride, progress, status, blobUrl, downloadName, xhr}
+  const LIMIT = 25; // definí el que quieras
+  const state = { items: [] }; // {id,file,size,name,targetOverride,progress,status,blobUrl,downloadName,xhr}
   let idSeq = 1;
 
-  function recomputeOverall(){
-    if (!state.items.length){ overallBar && (overallBar.style.width = '0%'); return; }
-    const wSum = state.items.reduce((acc, it)=> acc + it.size, 0) || 1;
-    const p = Math.round(state.items.reduce((acc, it)=> acc + (it.progress * it.size), 0) / wSum * 100);
-    if (overallBar) overallBar.style.width = Math.max(5, p) + '%';
+  function allDone(){ return state.items.length>0 && state.items.every(it=>it.status==='done'); }
+  function updateDownloadAll(){
+    if (!btnDownloadAll) return;
+    btnDownloadAll.disabled = !allDone();
   }
 
   function render(){
     queueWrap.innerHTML = '';
     state.items.forEach(it => {
-      const row = el('div', {class:'queue-item card'});
+      const row = el('div', {class:'queue-item'});
       const head = el('div', {class:'qi-head'},
         el('div', {class:'qi-meta'},
           el('div', {class:'qi-name'}, it.name),
@@ -190,13 +189,11 @@
         ),
         el('div', {class:'qi-target'},
           (function(){
-            // Crea un select por-archivo con las mismas opciones que #globalTarget, si existe.
-            const sel = el('select', {class:'select qi-select', 'data-id': it.id, title:'Formato por archivo'});
-            const inherit = el('option', {value:''}); inherit.textContent = 'Heredar global'; sel.appendChild(inherit);
+            const sel = el('select', {class:'select qi-select', 'data-id': it.id, title:'Formato por archivo', style:'text-transform:uppercase'});
+            const inherit = el('option', {value:''}, 'Heredar global'); sel.appendChild(inherit);
             if (globalTarget){
               Array.from(globalTarget.options).forEach(opt=>{
-                const o = el('option', {value: opt.value});
-                o.textContent = (opt.textContent || '').toUpperCase();
+                const o = el('option', {value: opt.value}, (opt.textContent || '').toUpperCase());
                 sel.appendChild(o);
               });
             }
@@ -213,8 +210,13 @@
 
       const actions = el('div', {class:'qi-actions mt-1'},
         el('button', {class:'btn compact', onclick:()=>removeItem(it.id)}, 'Quitar'),
-        el('button', {class:'btn compact', onclick:()=>convertOne(it)}, 'Convertir'),
-        el('a', {class:'btn compact', href: it.blobUrl || '#', download: it.downloadName || '', style: it.status==='done'?'':'pointer-events:none; opacity:.5'}, 'Descargar')
+        el('button', {class:'btn compact', onclick:()=>convertOne(it)}, it.status==='done'?'Reconvertir':'Convertir'),
+        el('a', {
+          class:'btn compact',
+          href: it.blobUrl || '#',
+          download: it.downloadName || '',
+          style: it.status==='done' ? '' : 'pointer-events:none; opacity:.5'
+        }, 'Descargar')
       );
 
       row.appendChild(head);
@@ -222,6 +224,7 @@
       row.appendChild(actions);
       queueWrap.appendChild(row);
     });
+    updateDownloadAll();
   }
 
   function removeItem(id){
@@ -231,40 +234,58 @@
       if (it.xhr && it.status==='uploading') it.xhr.abort();
       if (it.blobUrl) URL.revokeObjectURL(it.blobUrl);
       state.items.splice(i,1);
-      render(); recomputeOverall();
+      render();
     }
   }
 
   function pushFiles(files){
     const list = Array.from(files||[]);
     for (const f of list){
-      if (state.items.length >= LIMIT){ alert('Máximo 5 archivos.'); break; }
-      state.items.push({ id:idSeq++, file:f, size:f.size, name:f.name, targetOverride:null, progress:0, status:'idle', blobUrl:null, downloadName:'', xhr:null });
+      if (state.items.length >= LIMIT){ alert(`Máximo ${LIMIT} archivos.`); break; }
+      state.items.push({
+        id:idSeq++,
+        file:f,
+        size:f.size,
+        name:f.name,
+        targetOverride:null,
+        progress:0,
+        status:'idle',
+        blobUrl:null,
+        downloadName:'',
+        xhr:null
+      });
     }
-    render(); recomputeOverall();
+    render();
   }
 
   // ---------- Drag & Drop / Click ----------
-  ['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev, e=>{ e.preventDefault(); dropZone.classList.add('is-drag'); }));
-  ['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev, e=>{ e.preventDefault(); dropZone.classList.remove('is-drag'); }));
+  ['dragenter','dragover'].forEach(ev=>dropZone.addEventListener(ev, e=>{ e.preventDefault(); dropZone.classList.add('dragover'); }));
+  ['dragleave','drop'].forEach(ev=>dropZone.addEventListener(ev, e=>{ e.preventDefault(); dropZone.classList.remove('dragover'); }));
   dropZone.addEventListener('click', ()=> fileInput?.click());
   dropZone.addEventListener('drop', e=>{ if (e.dataTransfer?.files?.length) pushFiles(e.dataTransfer.files); });
   fileInput?.addEventListener('change', e=> pushFiles(e.target.files));
   btnAdd?.addEventListener('click', e=> { e.preventDefault(); fileInput?.click(); });
-  btnClear?.addEventListener('click', e=>{ e.preventDefault(); state.items.forEach(it=> it.blobUrl && URL.revokeObjectURL(it.blobUrl)); state.items = []; render(); recomputeOverall(); });
+  btnClear?.addEventListener('click', e=>{
+    e.preventDefault();
+    state.items.forEach(it=> it.blobUrl && URL.revokeObjectURL(it.blobUrl));
+    state.items = []; render();
+  });
 
   // ---------- Helpers ----------
-  function effectiveTarget(it){ return (it.targetOverride || globalTarget?.value || '').toLowerCase(); }
+  function effectiveTarget(it){
+    return (it.targetOverride || globalTarget?.value || '').toLowerCase();
+  }
 
   // ---------- Conversión (uno) ----------
   function convertOne(it){
     if (!it || it.status==='uploading') return;
-    const tgt = effectiveTarget(it) || (globalTarget?.value||'');
+    const tgt = effectiveTarget(it);
     if (!tgt){ alert('Elegí un formato de salida.'); return; }
+    if (!routeHidden){ alert('Falta input[name="route"] en el HTML.'); return; }
 
     const fd = new FormData();
     fd.append('target', tgt);
-    fd.append('route', document.querySelector('input[name="route"]')?.value || '');
+    fd.append('route', routeHidden.value || '');
     fd.append('file', it.file);
 
     const xhr = new XMLHttpRequest();
@@ -272,10 +293,13 @@
     xhr.open('POST', '/api/convert', true);
     xhr.responseType = 'blob';
 
-    it.status = 'uploading'; it.progress = 0; render(); recomputeOverall();
+    it.status = 'uploading'; it.progress = 0; render();
 
     xhr.upload.onprogress = function(e){
-      if (e.lengthComputable){ it.progress = Math.min(0.95, e.loaded / e.total); render(); recomputeOverall(); }
+      if (e.lengthComputable){
+        it.progress = Math.min(0.95, e.loaded / e.total);
+        render();
+      }
     };
 
     xhr.onload = function(){
@@ -284,31 +308,53 @@
         const m = /filename="([^"]+)"/.exec(dispo);
         const fname = m ? m[1] : (it.name.replace(/\.[^.]+$/, '') + '.' + tgt);
         const url = URL.createObjectURL(xhr.response);
-        it.status = 'done'; it.progress = 1; it.downloadName = fname;
+        it.status = 'done';
+        it.progress = 1;
+        it.downloadName = fname;
         if (it.blobUrl) URL.revokeObjectURL(it.blobUrl);
         it.blobUrl = url;
-        render(); recomputeOverall();
+        render();
       } else {
-        it.status = 'error'; render(); recomputeOverall(); alert('Error convirtiendo '+ it.name);
+        it.status = 'error'; render(); alert('Error convirtiendo '+ it.name);
       }
     };
 
-    xhr.onerror = function(){ it.status = 'error'; render(); recomputeOverall(); alert('Fallo de red en '+ it.name); };
+    xhr.onerror = function(){ it.status = 'error'; render(); alert('Fallo de red en '+ it.name); };
     xhr.send(fd);
   }
 
   // ---------- Convertir todo (concurrencia 2) ----------
   btnConvertAll?.addEventListener('click', async e=>{
     e.preventDefault();
-    const pending = state.items.filter(it=> it.status==='idle' || it.status==='error');
+    const pend = state.items.filter(it=> it.status==='idle' || it.status==='error');
     const pool = 2; let idx = 0;
     async function runOne(){
-      if (idx >= pending.length) return;
-      const it = pending[idx++]; convertOne(it);
-      await new Promise(res=>{ const t = setInterval(()=>{ if (it.status==='done' || it.status==='error'){ clearInterval(t); res(); } }, 100); });
+      if (idx >= pend.length) return;
+      const it = pend[idx++]; convertOne(it);
+      await new Promise(res=>{
+        const t = setInterval(()=>{
+          if (it.status==='done' || it.status==='error'){ clearInterval(t); res(); }
+        }, 120);
+      });
       await runOne();
     }
-    await Promise.all(Array.from({length: Math.min(pool, pending.length)}, runOne));
+    await Promise.all(Array.from({length: Math.min(pool, pend.length)}, runOne));
+  });
+
+  // ---------- Descargar todo (dispara cada ítem listo) ----------
+  btnDownloadAll?.addEventListener('click', e=>{
+    e.preventDefault();
+    if (!allDone()) return;
+    state.items.forEach(it=>{
+      if (it.status==='done' && it.blobUrl){
+        const a = document.createElement('a');
+        a.href = it.blobUrl;
+        a.download = it.downloadName || it.name;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    });
   });
 })();
 

@@ -17,6 +17,9 @@
 
 {% block content %}
 <section class="panel converter" data-route-slug="{{ route.slug }}">
+
+  <input type="hidden" name="route" value="{{ route.slug }}">
+
   <!-- Panel general -->
   <div class="converter-head">
     <div class="converter-head-left">
@@ -71,13 +74,6 @@
 <script id="route-from-json" type="application/json">{{ (route.exts_from or []) | tojson | safe }}</script>
 <script id="route-to-json"   type="application/json">{{ (route.exts_to   or []) | tojson | safe }}</script>
 
-
-<div class="actions mt-2">
-  <button id="btnAdd" class="btn" type="button">Agregar archivos</button>
-  <button id="btnConvertAll" class="btn primary" type="button">Convertir todo</button>
-  <button id="btnClear" class="btn" type="button">Limpiar</button>
-  <button id="btnDownloadAll" class="btn download" type="button">Descargar todo</button>
-</div>
 
 <section class="panel">
   <h2>Pasos</h2>
